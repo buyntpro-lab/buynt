@@ -19,8 +19,20 @@ export interface Request {
     requester_contact: string;
     start_date: string;
     end_date: string;
+    total_price: number;
     message: string;
     status: 'pending' | 'accepted' | 'rejected';
+    created_at: string;
+}
+
+export interface Message {
+    id: string;
+    booking_id?: string;
+    product_id: string;
+    sender_id: string;
+    receiver_id: string;
+    content: string;
+    is_read: boolean;
     created_at: string;
 }
 

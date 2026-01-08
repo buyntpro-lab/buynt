@@ -6,6 +6,7 @@ import { Publish } from './pages/Publish';
 import { MyItems } from './pages/MyItems';
 import { MyRequests } from './pages/MyRequests';
 import { Inbox } from './pages/Inbox';
+import { Chat } from './pages/Chat';
 import { Login } from './pages/Login';
 import { AuthProvider } from './context/AuthContext';
 
@@ -21,6 +22,7 @@ function App() {
             <Route path="my-items" element={<MyItems />} />
             <Route path="my-requests" element={<MyRequests />} />
             <Route path="inbox" element={<Inbox />} />
+            <Route path="chat" element={<Chat />} />
             <Route path="login" element={<Login />} />
           </Route>
         </Routes>
