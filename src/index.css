@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+/* Custom theme using Tailwind v4's CSS-based config */
+@theme {
+  --color-primary: #13C1AC;
+  --color-primary-dark: #0e9f8d;
+  --color-secondary: #ec4899;
+
+  --font-family-sans: 'Inter', system-ui, sans-serif;
+}
+
+/* Base layer styles */
+@layer base {
+  html {
+    font-family: var(--font-family-sans);
+  }
+
+  body {
+    @apply antialiased bg-gray-50 text-gray-900;
+  }
+}
