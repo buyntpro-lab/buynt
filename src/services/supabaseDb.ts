@@ -137,17 +137,28 @@ export const itemsService = {
     },
 
     async add(item: Omit<Item, 'id' | 'created_at'>): Promise<Item | null> {
-        const { data, error } = await supabase
-            .from('items')
-            .insert([item])
-            .select()
-            .single();
+        try {
+            console.log('📤 Enviando item a Supabase:', item);
+            
+            const { data, error } = await supabase
+                .from('items')
+                .insert([item])
+                .select()
+                .single();
 
-        if (error) {
-            console.error('Error adding item:', error);
-            return null;
+            if (error) {
+                console.error('❌ Error adding item:', error.message);
+                console.error('Error code:', error.code);
+                console.error('Error details:', error);
+                throw new Error(error.message || 'Error al insertar el producto');
+            }
+            
+            console.log('✅ Item agregado exitosamente:', data);
+            return data;
+        } catch (error: any) {
+            console.error('❌ Exception in add():', error);
+            throw error;
         }
-        return data;
     },
 
     async delete(id: string): Promise<boolean> {

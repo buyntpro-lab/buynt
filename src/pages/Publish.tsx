@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, DollarSign, MapPin } from 'lucide-react';
+import { Upload, DollarSign } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
 import { itemsService } from '../services/supabaseDb';
 import { useAuth } from '../context/AuthContext';
+import toast from 'react-hot-toast';
 
 export const Publish: React.FC = () => {
     const navigate = useNavigate();
     const { user, isAuthenticated } = useAuth();
+    const [loading, setLoading] = useState(false);
 
     const [formData, setFormData] = useState({
         title: '',
@@ -28,25 +30,57 @@ export const Publish: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setLoading(true);
 
-        if (!formData.title || !formData.price_day || !formData.city) {
-            alert('Por favor rellena los campos requeridos');
-            return;
+        try {
+            // Validar campos requeridos
+            if (!formData.title || !formData.price_day || !formData.city) {
+                toast.error('Por favor rellena los campos requeridos (Título, Precio, Ciudad)');
+                setLoading(false);
+                return;
+            }
+
+            console.log('📝 Intentando publicar producto:', {
+                title: formData.title,
+                price_day: formData.price_day,
+                city: formData.city,
+                user_id: user?.id,
+                owner_email: user?.email
+            });
+
+            // Crear el producto
+            const newItem = await itemsService.add({
+                title: formData.title,
+                description: formData.description,
+                price_day: Number(formData.price_day),
+                city: formData.city,
+                image_url: formData.image_url || 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&q=80&w=800',
+                category: formData.category || 'Otros',
+                owner_name: isAuthenticated ? user!.full_name || 'Usuario' : formData.owner_name,
+                owner_contact: isAuthenticated ? user!.email : formData.owner_contact,
+                owner_id: user?.id || '',
+            });
+
+            if (!newItem) {
+                toast.error('Error al publicar el anuncio. Por favor intenta de nuevo.');
+                setLoading(false);
+                return;
+            }
+
+            console.log('✅ Producto publicado exitosamente:', newItem);
+            toast.success('¡Anuncio publicado correctamente!');
+
+            // Redirigir a Mis Artículos
+            setTimeout(() => {
+                navigate('/my-items');
+            }, 500);
+
+        } catch (error: any) {
+            console.error('❌ Error al publicar:', error);
+            toast.error(error.message || 'Error inesperado al publicar el anuncio');
+        } finally {
+            setLoading(false);
         }
-
-        await itemsService.add({
-            title: formData.title,
-            description: formData.description,
-            price_day: Number(formData.price_day),
-            city: formData.city,
-            image_url: formData.image_url || 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&q=80&w=800',
-            category: formData.category || 'Otros',
-            owner_name: isAuthenticated ? user!.full_name || '' : formData.owner_name,
-            owner_contact: isAuthenticated ? user!.email : formData.owner_contact,
-            owner_id: user?.id,
-        });
-
-        navigate('/my-items');
     };
 
     return (
@@ -167,7 +201,20 @@ export const Publish: React.FC = () => {
                 )}
 
                 <div className="pt-4">
-                    <Button type="submit" className="w-full py-3 text-lg">Publicar Anuncio</Button>
+                    <Button 
+                        type="submit" 
+                        className="w-full py-3 text-lg"
+                        disabled={loading}
+                    >
+                        {loading ? (
+                            <div className="flex items-center justify-center gap-2">
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                Publicando...
+                            </div>
+                        ) : (
+                            'Publicar Anuncio'
+                        )}
+                    </Button>
                 </div>
 
             </form>

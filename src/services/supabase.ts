@@ -1,6 +1,9 @@
-import { createClient } from '@supabase/supabase-js';
+/**
+ * Supabase Client
+ * 
+ * Re-exporta el cliente de Supabase desde la carpeta lib/
+ * para mantener compatibilidad con el resto del código
+ */
 
-const supabaseUrl = 'https://sxzpfndudjgpgwhafwlq.supabase.co';
-const supabaseAnonKey = 'sb_publishable_NS1lJsdGAQedKjwNBToE9A_B61urQ3s';
+export { supabase } from '../lib/supabaseClient';
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);

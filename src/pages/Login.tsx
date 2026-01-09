@@ -1,15 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { LogIn, Mail, Lock } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import { supabase } from '../services/supabase';
 import { toast } from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
 
 export const Login: React.FC = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
+    const { user } = useAuth();
+
+    // Si ya está logeado, redirigir a home
+    useEffect(() => {
+        if (user) {
+            console.log('✅ User detected, redirecting to home');
+            navigate('/');
+        }
+    }, [user, navigate]);
 
     const handleEmailLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -22,16 +32,11 @@ export const Login: React.FC = () => {
             });
 
             if (error) throw error;
-
+            
             toast.success('¡Bienvenido de nuevo!');
-            // Navigation handled by AuthContext or separate effect usually, 
-            // but explicit navigate here is fine as fallback.
-            // But wait, if AuthContext detects sign in, it might set User.
-            // The ProtectedRoute will see user and allow access.
-            navigate('/');
+            // No navigate aquí - dejar que useEffect lo maneje cuando user se actualice
         } catch (error: any) {
             toast.error(error.message || 'Error al iniciar sesión');
-        } finally {
             setLoading(false);
         }
     };

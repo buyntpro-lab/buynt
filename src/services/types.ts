@@ -42,4 +42,6 @@ export interface User {
     full_name?: string;
     avatar_url?: string;
     dni_verified?: boolean;
+    phone?: string;
+    created_at?: string;
 }
