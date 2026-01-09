@@ -58,30 +58,45 @@ export const Header: React.FC = () => {
                 <div className="hidden md:flex items-center gap-2 md:gap-6">
                     {isAuthenticated ? (
                         <>
-                            <Link to="/inbox" className="p-2 text-gray-500 hover:bg-gray-50 rounded-full relative group flex flex-col items-center">
-                                <MessageSquare className="w-6 h-6 group-hover:text-primary transition-colors" />
+                            <Link to="/inbox" className="p-2 text-gray-500 hover:bg-gray-100 rounded-full relative group flex flex-col items-center transition-all">
+                                <MessageSquare className="w-6 h-6 group-hover:text-primary" />
                                 <span className="text-[10px] font-medium mt-0.5">Mensajes</span>
                                 {unreadCount > 0 && (
-                                    <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse" />
+                                    <span className="absolute top-1 right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full border-2 border-white">
+                                        {unreadCount}
+                                    </span>
                                 )}
                             </Link>
-                            <Link to="/my-items" className="p-2 text-gray-500 hover:bg-gray-50 rounded-full relative group flex flex-col items-center">
-                                <User className="w-6 h-6 group-hover:text-primary transition-colors" />
-                                <span className="text-[10px] font-medium mt-0.5">Tú</span>
+                            <Link to="/profile" className="flex items-center gap-2 p-1 pl-3 border border-slate-100 rounded-full hover:bg-slate-50 transition-all group">
+                                <span className="text-sm font-semibold text-slate-700 max-w-[100px] truncate">{user?.full_name?.split(' ')[0]}</span>
+                                <div className="w-9 h-9 bg-primary/10 rounded-full flex items-center justify-center overflow-hidden border-2 border-transparent group-hover:border-primary/20 transition-all">
+                                    {user?.avatar_url ? (
+                                        <img src={user.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <User className="w-5 h-5 text-primary" />
+                                    )}
+                                </div>
                             </Link>
                         </>
                     ) : (
-                        <Link to="/login" className="text-sm font-bold text-gray-700 hover:text-primary transition-colors">
-                            Inicia sesión
-                        </Link>
+                        <div className="flex items-center gap-4">
+                            <Link to="/login" className="text-sm font-bold text-gray-700 hover:text-primary transition-colors">
+                                Inicia sesión
+                            </Link>
+                            <Link to="/register">
+                                <Button variant="outline" size="sm" className="rounded-full border-primary/20 text-primary hover:bg-primary/5">
+                                    Regístrate
+                                </Button>
+                            </Link>
+                        </div>
                     )}
 
                     <Button
                         onClick={handlePublishClick}
-                        className="rounded-full shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-shadow gap-2"
+                        className="rounded-full shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-shadow gap-2 px-6"
                     >
                         <PlusCircle className="w-5 h-5" />
-                        <span>Subir producto</span>
+                        <span className="font-bold">Subir producto</span>
                     </Button>
                 </div>
 

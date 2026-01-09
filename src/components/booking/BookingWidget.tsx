@@ -48,7 +48,7 @@ export const BookingWidget: React.FC<BookingWidgetProps> = ({ item }) => {
         const days = differenceInDays(range.to, range.from) + 1;
         const totalPrice = days * item.price_day;
 
-        const requesterName = isAuthenticated ? user!.name : 'Invitado';
+        const requesterName = (isAuthenticated ? user!.full_name : 'Invitado') || 'Invitado';
         const requesterContact = isAuthenticated ? user!.email : 'Sin contacto';
 
         if (!isAuthenticated) {

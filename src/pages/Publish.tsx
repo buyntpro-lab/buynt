@@ -17,7 +17,7 @@ export const Publish: React.FC = () => {
         city: '',
         image_url: '',
         category: '',
-        owner_name: user?.name || '',
+        owner_name: user?.full_name || '',
         owner_contact: user?.email || '',
     });
 
@@ -41,7 +41,7 @@ export const Publish: React.FC = () => {
             city: formData.city,
             image_url: formData.image_url || 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&q=80&w=800',
             category: formData.category || 'Otros',
-            owner_name: isAuthenticated ? user!.name : formData.owner_name,
+            owner_name: isAuthenticated ? user!.full_name || '' : formData.owner_name,
             owner_contact: isAuthenticated ? user!.email : formData.owner_contact,
             owner_id: user?.id,
         });

@@ -8,6 +8,7 @@ import type { Item } from '../services/types';
 export const Home: React.FC = () => {
     const [items, setItems] = useState<Item[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [searchParams] = useSearchParams();
     const searchTerm = searchParams.get('q') || '';
     const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
@@ -15,12 +16,38 @@ export const Home: React.FC = () => {
     useEffect(() => {
         const fetchItems = async () => {
             setLoading(true);
+            setError(null);
+            console.log('Home: Fetching items...');
             const allItems = await itemsService.getAll();
-            setItems(allItems);
+            console.log('Home: Items fetched:', allItems);
+
+            if (allItems === null) {
+                setError('Hubo un problema al conectar con la base de datos. Por favor, revisa la consola para más detalles.');
+                setItems([]);
+            } else {
+                setItems(allItems);
+            }
             setLoading(false);
         };
         fetchItems();
     }, []);
+
+    if (error) {
+        return (
+            <div className="text-center py-20 bg-red-50 rounded-2xl border border-red-100 mx-4">
+                <div className="max-w-md mx-auto">
+                    <h3 className="text-lg font-medium text-red-900 mb-2">Error de conexión</h3>
+                    <p className="text-red-600 mb-4">{error}</p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="px-6 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors"
+                    >
+                        Reintentar
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     const filteredItems = items.filter(item => {
         const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||

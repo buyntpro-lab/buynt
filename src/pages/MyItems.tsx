@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Trash2, Edit, PlusCircle } from 'lucide-react';
+import { Trash2, PlusCircle } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import { Card } from '../components/common/Card';
 import { itemsService } from '../services/supabaseDb';
@@ -10,21 +10,18 @@ import type { Item } from '../services/types';
 export const MyItems: React.FC = () => {
     const { user, isAuthenticated } = useAuth();
     const [items, setItems] = useState<Item[]>([]);
-    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         loadItems();
     }, [user]);
 
     const loadItems = async () => {
-        setLoading(true);
         if (isAuthenticated && user) {
-            const myItems = await itemsService.getByOwner(user.email);
+            const myItems = await itemsService.getByUserId(user.id);
             setItems(myItems);
         } else {
             setItems([]);
         }
-        setLoading(false);
     };
 
     const handleDelete = async (id: string, e: React.MouseEvent) => {
