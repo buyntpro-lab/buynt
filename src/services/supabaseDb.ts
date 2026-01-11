@@ -1,6 +1,5 @@
 import { supabase } from './supabase';
 import type { Item, Request } from './types';
-import { mockItems } from '../data/mockData';
 
 // Bookings operations
 export const bookingsService = {
@@ -42,17 +41,11 @@ export const itemsService = {
 
         if (error) {
             console.error('Error fetching items from Supabase:', error);
-            console.warn('⚠️ Usando mockItems como fallback');
-            // Devolver mockItems como fallback si Supabase falla
-            return mockItems;
+            return [];
         }
         
-        // Si Supabase devuelve datos, combinar con mockItems para desarrollo
-        // (en producción solo sería data)
-        const combinedItems = [...(data || []), ...mockItems];
-        // Eliminar duplicados por ID
-        const uniqueItems = Array.from(new Map(combinedItems.map(item => [item.id, item])).values());
-        return uniqueItems;
+        console.log('🔍 itemsService.getAll() - Items from Supabase:', data?.length);
+        return data || [];
     },
 
     async getById(id: string): Promise<Item | null> {
@@ -133,6 +126,30 @@ export const itemsService = {
             return false;
         }
         return true;
+    },
+
+    async update(id: string, updates: Partial<Omit<Item, 'id' | 'created_at' | 'owner_id'>>): Promise<Item | null> {
+        try {
+            console.log('📤 Actualizando item en Supabase:', { id, updates });
+            
+            const { data, error } = await supabase
+                .from('items')
+                .update(updates)
+                .eq('id', id)
+                .select()
+                .single();
+
+            if (error) {
+                console.error('❌ Error updating item:', error.message);
+                throw new Error(error.message || 'Error al actualizar el producto');
+            }
+            
+            console.log('✅ Item actualizado exitosamente:', data);
+            return data;
+        } catch (error: any) {
+            console.error('❌ Exception in update():', error);
+            throw error;
+        }
     }
 };
 

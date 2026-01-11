@@ -6,6 +6,7 @@ import { HomeLanding } from './pages/HomeLanding';
 import { Explore } from './pages/Explore';
 import { ItemDetail } from './pages/ItemDetail';
 import { Publish } from './pages/Publish';
+import { EditItem } from './pages/EditItem';
 import { MyItems } from './pages/MyItems';
 import { MyRequests } from './pages/MyRequests';
 import { Inbox } from './pages/Inbox';
@@ -45,6 +46,7 @@ function App() {
 
             {/* Protected Routes */}
             <Route path="publish" element={<ProtectedRoute><Publish /></ProtectedRoute>} />
+            <Route path="item/:id/editar" element={<ProtectedRoute><EditItem /></ProtectedRoute>} />
             <Route path="my-items" element={<ProtectedRoute><MyItems /></ProtectedRoute>} />
             <Route path="my-requests" element={<ProtectedRoute><MyRequests /></ProtectedRoute>} />
             <Route path="inbox" element={<ProtectedRoute><Inbox /></ProtectedRoute>} />

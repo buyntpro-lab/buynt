@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Trash2, PlusCircle } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Trash2, PlusCircle, Pencil } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import { Card } from '../components/common/Card';
 import { itemsService } from '../services/supabaseDb';
@@ -10,6 +10,7 @@ import type { Item } from '../services/types';
 export const MyItems: React.FC = () => {
     const { user, isAuthenticated } = useAuth();
     const [items, setItems] = useState<Item[]>([]);
+    const navigate = useNavigate();
 
     useEffect(() => {
         loadItems();
@@ -24,13 +25,15 @@ export const MyItems: React.FC = () => {
         }
     };
 
-    const handleDelete = async (id: string, e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
+    const handleDelete = async (id: string) => {
         if (confirm('¿Estás seguro de borrar este anuncio?')) {
             await itemsService.delete(id);
             loadItems();
         }
+    };
+
+    const handleEdit = (id: string) => {
+        navigate(`/item/${id}/editar`);
     };
 
     return (
@@ -62,25 +65,46 @@ export const MyItems: React.FC = () => {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {items.map(item => (
-                        <Link key={item.id} to={`/item/${item.id}`} className="block group">
-                            <Card className="h-full hover:shadow-md transition-shadow relative">
-                                <div className="aspect-video w-full overflow-hidden bg-slate-100 border-b border-gray-100">
-                                    <img src={item.image_url} alt={item.title} className="w-full h-full object-cover" />
-                                </div>
-                                <div className="p-4">
-                                    <h3 className="font-bold text-slate-800 mb-1">{item.title}</h3>
-                                    <p className="text-indigo-600 font-semibold">{item.price_day}€ <span className="text-slate-400 font-normal">/día</span></p>
-                                </div>
-                                <div className="absolute top-2 right-2 flex gap-2">
-                                    <button
-                                        onClick={(e) => handleDelete(item.id, e)}
-                                        className="p-2 bg-white/90 backdrop-blur rounded-full shadow-sm text-red-500 hover:bg-red-50 transition-colors"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            </Card>
-                        </Link>
+                        <div key={item.id} className="relative group">
+                            <div 
+                                onClick={() => navigate(`/item/${item.id}`)}
+                                className="block cursor-pointer"
+                            >
+                                <Card className="h-full hover:shadow-md transition-shadow">
+                                    <div className="aspect-video w-full overflow-hidden bg-slate-100 border-b border-gray-100">
+                                        <img src={item.image_url} alt={item.title} className="w-full h-full object-cover" />
+                                    </div>
+                                    <div className="p-4">
+                                        <h3 className="font-bold text-slate-800 mb-1">{item.title}</h3>
+                                        <p className="text-indigo-600 font-semibold">{item.price_day}€ <span className="text-slate-400 font-normal">/día</span></p>
+                                    </div>
+                                </Card>
+                            </div>
+                            <div className="absolute top-2 right-2 flex gap-2">
+                                <button
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleEdit(item.id);
+                                    }}
+                                    className="p-2 bg-white/90 backdrop-blur rounded-full shadow-sm text-primary hover:bg-primary hover:text-white transition-colors"
+                                    title="Editar artículo"
+                                >
+                                    <Pencil className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleDelete(item.id);
+                                    }}
+                                    className="p-2 bg-white/90 backdrop-blur rounded-full shadow-sm text-red-500 hover:bg-red-50 transition-colors"
+                                    title="Eliminar artículo"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
                     ))}
                 </div>
             )}

@@ -6,7 +6,6 @@ import { itemsService } from '../services/supabaseDb';
 import { chatService } from '../services/chatService';
 import { BookingWidget } from '../components/booking/BookingWidget';
 import { useAuth } from '../context/AuthContext';
-import { mockItems } from '../data/mockData';
 import type { Item } from '../services/types';
 import toast from 'react-hot-toast';
 
@@ -20,15 +19,9 @@ export const ItemDetail: React.FC = () => {
     useEffect(() => {
         const fetchItem = async () => {
             if (id) {
-                // First try to find in Supabase
+                // Fetch from Supabase
                 const foundItem = await itemsService.getById(id);
-                if (foundItem) {
-                    setItem(foundItem);
-                } else {
-                    // Fallback to mock data
-                    const mockItem = mockItems.find(item => item.id === id);
-                    setItem(mockItem || undefined);
-                }
+                setItem(foundItem || undefined);
             }
         };
         fetchItem();

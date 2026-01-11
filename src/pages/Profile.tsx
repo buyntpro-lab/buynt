@@ -432,7 +432,7 @@ export const Profile: React.FC = () => {
                                             <p className="text-xs text-slate-500 mb-4">{item.city} • {item.category}</p>
                                             <p className="text-sm text-slate-600 mb-4 line-clamp-2">{item.description}</p>
                                             <div className="flex gap-2">
-                                                <Link to={`/item/${item.id}/edit`} className="flex-1">
+                                                <Link to={`/item/${item.id}/editar`} className="flex-1">
                                                     <Button size="sm" variant="outline" className="w-full rounded-[12px] gap-2">
                                                         <Edit2 className="w-3 h-3" />
                                                         Editar

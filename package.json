@@ -7,13 +7,16 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "diagnose:demos": "ts-node scripts/diagnose-demo-items.ts",
+    "fix:demo-images": "ts-node scripts/fix-demo-images.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.90.0",
     "@tailwindcss/vite": "^4.1.18",
     "@types/uuid": "^10.0.0",
     "date-fns": "^4.1.0",
+    "dotenv": "^17.2.3",
     "lucide-react": "^0.562.0",
     "react": "^19.2.0",
     "react-day-picker": "^9.13.0",
@@ -35,6 +38,7 @@
     "globals": "^16.5.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",
+    "ts-node": "^10.9.2",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4"
