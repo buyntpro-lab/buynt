@@ -48,14 +48,18 @@ export const Header: React.FC = () => {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-primary transition-colors" />
                     <input
                         type="text"
-                        placeholder="¿Qué estás buscando?"
+                        placeholder="Buscar artículos..."
                         className="w-full pl-10 pr-4 py-2.5 bg-gray-100 rounded-full border-transparent focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-gray-400 text-sm"
-                        onKeyDown={(e) => e.key === 'Enter' && window.location.assign(`/?q=${e.currentTarget.value}`)}
+                        onKeyDown={(e) => e.key === 'Enter' && navigate(`/explorar?q=${e.currentTarget.value}`)}
                     />
                 </div>
 
                 {/* Actions */}
                 <div className="hidden md:flex items-center gap-2 md:gap-6">
+                    <Link to="/explorar" className="text-sm font-medium text-gray-700 hover:text-primary transition-colors">
+                        Explorar
+                    </Link>
+                    
                     {isAuthenticated ? (
                         <>
                             <Link to="/messages" className="p-2 text-gray-500 hover:bg-gray-100 rounded-full relative group flex flex-col items-center transition-all">
@@ -117,21 +121,25 @@ export const Header: React.FC = () => {
                             type="text"
                             placeholder="Buscar..."
                             className="w-full pl-9 pr-4 py-2 bg-gray-100 rounded-xl text-sm outline-none"
-                            onKeyDown={(e) => e.key === 'Enter' && window.location.assign(`/?q=${e.currentTarget.value}`)}
+                            onKeyDown={(e) => e.key === 'Enter' && navigate(`/explorar?q=${e.currentTarget.value}`)}
                         />
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                     </div>
 
+                    <Link to="/explorar" className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg text-gray-700 font-medium">
+                        Explorar
+                    </Link>
+
                     {isAuthenticated ? (
                         <>
-                            <Link to="/inbox" className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg text-gray-700">
+                            <Link to="/messages" className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg text-gray-700">
                                 <MessageSquare className="w-5 h-5" />
                                 <span>Mensajes</span>
                                 {unreadCount > 0 && (
                                     <span className="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{unreadCount}</span>
                                 )}
                             </Link>
-                            <Link to="/my-items" className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg text-gray-700">
+                            <Link to="/profile" className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg text-gray-700">
                                 <User className="w-5 h-5" />
                                 <span>Mi Perfil</span>
                             </Link>

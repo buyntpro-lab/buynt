@@ -2,8 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { Layout } from './components/layout/Layout';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
-import { Landing } from './pages/Landing';
-import { Home } from './pages/Home';
+import { HomeLanding } from './pages/HomeLanding';
+import { Explore } from './pages/Explore';
 import { ItemDetail } from './pages/ItemDetail';
 import { Publish } from './pages/Publish';
 import { MyItems } from './pages/MyItems';
@@ -16,6 +16,15 @@ import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Profile } from './pages/Profile';
 import { AuthProvider } from './context/AuthContext';
+import { 
+  PrivacyPolicy, 
+  TermsOfUse, 
+  CookiesPolicy, 
+  HowItWorks, 
+  Security, 
+  HelpCenter, 
+  Contact 
+} from './pages/LegalPages';
 
 function App() {
   return (
@@ -23,12 +32,13 @@ function App() {
       <Toaster position="top-center" reverseOrder={false} />
       <BrowserRouter>
         <Routes>
-          {/* Landing - PUBLIC */}
-          <Route path="/landing" element={<Landing />} />
+          {/* Landing - HOME */}
+          <Route path="/" element={<HomeLanding />} />
 
-          <Route path="/" element={<Layout />}>
+          {/* Routes with Layout (Header) */}
+          <Route element={<Layout />}>
             {/* Public Routes */}
-            <Route path="/" element={<Home />} />
+            <Route path="explorar" element={<Explore />} />
             <Route path="login" element={<Login />} />
             <Route path="register" element={<Register />} />
             <Route path="item/:id" element={<ItemDetail />} />
@@ -43,6 +53,20 @@ function App() {
             <Route path="messages/:conversationId" element={<ProtectedRoute><MessageDetail /></ProtectedRoute>} />
             <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           </Route>
+
+          {/* Legal / Info Pages */}
+          <Route path="/legal/privacidad" element={<PrivacyPolicy />} />
+          <Route path="/legal/terminos" element={<TermsOfUse />} />
+          <Route path="/legal/cookies" element={<CookiesPolicy />} />
+          <Route path="/como-funciona" element={<HowItWorks />} />
+          <Route path="/seguridad" element={<Security />} />
+          <Route path="/ayuda" element={<HelpCenter />} />
+          <Route path="/contacto" element={<Contact />} />
+
+          {/* Legacy redirects */}
+          <Route path="/home" element={<Navigate to="/" replace />} />
+          <Route path="/feed" element={<Navigate to="/explorar" replace />} />
+          <Route path="/landing" element={<Navigate to="/" replace />} />
 
           {/* Catch all - redirect to home */}
           <Route path="*" element={<Navigate to="/" replace />} />
