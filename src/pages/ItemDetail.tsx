@@ -5,6 +5,7 @@ import { Button } from '../components/common/Button';
 import { itemsService } from '../services/supabaseDb';
 import { BookingWidget } from '../components/booking/BookingWidget';
 import { useAuth } from '../context/AuthContext';
+import { mockItems } from '../data/mockData';
 import type { Item } from '../services/types';
 
 export const ItemDetail: React.FC = () => {
@@ -16,8 +17,15 @@ export const ItemDetail: React.FC = () => {
     useEffect(() => {
         const fetchItem = async () => {
             if (id) {
+                // First try to find in Supabase
                 const foundItem = await itemsService.getById(id);
-                setItem(foundItem || undefined);
+                if (foundItem) {
+                    setItem(foundItem);
+                } else {
+                    // Fallback to mock data
+                    const mockItem = mockItems.find(item => item.id === id);
+                    setItem(mockItem || undefined);
+                }
             }
         };
         fetchItem();

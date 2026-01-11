@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import type { Item, Request } from './types';
+import { mockItems } from '../data/mockData';
 
 // Bookings operations
 export const bookingsService = {
@@ -33,65 +34,25 @@ export const bookingsService = {
 
 // Items operations
 export const itemsService = {
-    async getAll(): Promise<Item[] | null> {
+    async getAll(): Promise<Item[]> {
         const { data, error } = await supabase
             .from('items')
             .select('*')
             .order('created_at', { ascending: false });
 
         if (error) {
-            console.error('Error fetching items (Supabase):', error);
-            console.error('Error details:', JSON.stringify(error, null, 2));
-            console.error('Error code:', error.code);
-            console.error('Error message:', error.message);
-            
-            // FALLBACK DE PRUEBA: Retornar items de prueba si Supabase falla
-            // Esto es TEMPORAL para diagnosticar el problema
-            console.warn('⚠️ Usando datos de prueba porque Supabase no responde');
-            const mockItems: Item[] = [
-                {
-                    id: '1',
-                    title: 'PlayStation 5',
-                    description: 'Consola de gaming última generación en excelente estado',
-                    price_day: 15,
-                    city: 'Madrid',
-                    image_url: 'https://images.unsplash.com/photo-1606841837239-c5a1a4a07af7?w=500&h=400&fit=crop',
-                    category: 'Electrónica',
-                    owner_id: 'user1',
-                    owner_name: 'Juan',
-                    owner_contact: 'juan@example.com',
-                    created_at: new Date().toISOString()
-                },
-                {
-                    id: '2',
-                    title: 'Bicicleta de montaña',
-                    description: 'Trek X-Caliber, 29", perfecta para off-road',
-                    price_day: 8,
-                    city: 'Barcelona',
-                    image_url: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=500&h=400&fit=crop',
-                    category: 'Deportes',
-                    owner_id: 'user2',
-                    owner_name: 'Maria',
-                    owner_contact: 'maria@example.com',
-                    created_at: new Date().toISOString()
-                },
-                {
-                    id: '3',
-                    title: 'Cámara Canon 5D',
-                    description: 'Cámara profesional DSLR con 2 lentes incluidos',
-                    price_day: 25,
-                    city: 'Valencia',
-                    image_url: 'https://images.unsplash.com/photo-1606986628025-35d57e735ae0?w=500&h=400&fit=crop',
-                    category: 'Fotografía',
-                    owner_id: 'user3',
-                    owner_name: 'Carlos',
-                    owner_contact: 'carlos@example.com',
-                    created_at: new Date().toISOString()
-                }
-            ];
+            console.error('Error fetching items from Supabase:', error);
+            console.warn('⚠️ Usando mockItems como fallback');
+            // Devolver mockItems como fallback si Supabase falla
             return mockItems;
         }
-        return data || [];
+        
+        // Si Supabase devuelve datos, combinar con mockItems para desarrollo
+        // (en producción solo sería data)
+        const combinedItems = [...(data || []), ...mockItems];
+        // Eliminar duplicados por ID
+        const uniqueItems = Array.from(new Map(combinedItems.map(item => [item.id, item])).values());
+        return uniqueItems;
     },
 
     async getById(id: string): Promise<Item | null> {

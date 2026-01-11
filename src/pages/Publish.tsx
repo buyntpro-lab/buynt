@@ -4,6 +4,7 @@ import { Upload, DollarSign } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
 import { itemsService } from '../services/supabaseDb';
+import { mockItems } from '../data/mockData';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -66,6 +67,9 @@ export const Publish: React.FC = () => {
                 setLoading(false);
                 return;
             }
+
+            // Agregar el nuevo item a mockItems para que aparezca inmediatamente en Home
+            mockItems.unshift(newItem);
 
             console.log('✅ Producto publicado exitosamente:', newItem);
             toast.success('¡Anuncio publicado correctamente!');

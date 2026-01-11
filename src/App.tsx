@@ -1,7 +1,8 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { Layout } from './components/layout/Layout';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
+import { Landing } from './pages/Landing';
 import { Home } from './pages/Home';
 import { ItemDetail } from './pages/ItemDetail';
 import { Publish } from './pages/Publish';
@@ -20,14 +21,17 @@ function App() {
       <Toaster position="top-center" reverseOrder={false} />
       <BrowserRouter>
         <Routes>
+          {/* Landing - PUBLIC */}
+          <Route path="/landing" element={<Landing />} />
+
           <Route path="/" element={<Layout />}>
-            {/* Public Routes - ONLY Login/Register */}
+            {/* Public Routes */}
+            <Route path="/" element={<Home />} />
             <Route path="login" element={<Login />} />
             <Route path="register" element={<Register />} />
+            <Route path="item/:id" element={<ItemDetail />} />
 
-            {/* Protected Routes - EVERYTHING ELSE */}
-            <Route index element={<ProtectedRoute><Home /></ProtectedRoute>} />
-            <Route path="item/:id" element={<ProtectedRoute><ItemDetail /></ProtectedRoute>} />
+            {/* Protected Routes */}
             <Route path="publish" element={<ProtectedRoute><Publish /></ProtectedRoute>} />
             <Route path="my-items" element={<ProtectedRoute><MyItems /></ProtectedRoute>} />
             <Route path="my-requests" element={<ProtectedRoute><MyRequests /></ProtectedRoute>} />
@@ -35,6 +39,9 @@ function App() {
             <Route path="chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
             <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           </Route>
+
+          {/* Catch all - redirect to home */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

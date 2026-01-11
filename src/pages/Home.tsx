@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin } from 'lucide-react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { Card } from '../components/common/Card';
+import { useSearchParams } from 'react-router-dom';
+import { Search } from 'lucide-react';
+import { ProductGrid } from '../components/common/ProductGrid';
 import { itemsService } from '../services/supabaseDb';
 import type { Item } from '../services/types';
 
@@ -9,137 +9,111 @@ export const Home: React.FC = () => {
     const [items, setItems] = useState<Item[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
+    
     const searchTerm = searchParams.get('q') || '';
-    const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+    const categoryFilter = searchParams.get('category') || '';
+    const cityFilter = searchParams.get('city') || '';
 
     useEffect(() => {
         const fetchItems = async () => {
             setLoading(true);
             setError(null);
-            console.log('Home: Fetching items...');
-            const allItems = await itemsService.getAll();
-            console.log('Home: Items fetched:', allItems);
-
-            if (allItems === null) {
-                setError('Hubo un problema al conectar con la base de datos. Por favor, revisa la consola para más detalles.');
+            try {
+                const items = await itemsService.getAll();
+                setItems(items || []);
+            } catch (err) {
+                console.error('Error fetching items:', err);
+                setError('No pudimos cargar los productos. Por favor intenta de nuevo.');
                 setItems([]);
-            } else {
-                setItems(allItems);
             }
             setLoading(false);
         };
         fetchItems();
     }, []);
 
-    if (error) {
-        return (
-            <div className="text-center py-20 bg-red-50 rounded-2xl border border-red-100 mx-4">
-                <div className="max-w-md mx-auto">
-                    <h3 className="text-lg font-medium text-red-900 mb-2">Error de conexión</h3>
-                    <p className="text-red-600 mb-4">{error}</p>
+    // Filtrar items
+    const filteredItems = items.filter((item) => {
+        const matchesSearch =
+            item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.description?.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesCategory = categoryFilter ? item.category?.toLowerCase() === categoryFilter.toLowerCase() : true;
+        const matchesCity = cityFilter ? item.city?.toLowerCase() === cityFilter.toLowerCase() : true;
+        return matchesSearch && matchesCategory && matchesCity;
+    });
+
+    const categories = Array.from(new Set(items.map((i) => i.category).filter(Boolean))) as string[];
+
+    return (
+        <div className="space-y-8">
+            {error && (
+                <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
+                    <p className="text-red-800 font-medium mb-3">{error}</p>
                     <button
                         onClick={() => window.location.reload()}
-                        className="px-6 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors"
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700"
                     >
                         Reintentar
                     </button>
                 </div>
-            </div>
-        );
-    }
+            )}
 
-    const filteredItems = items.filter(item => {
-        const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.description.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesCategory = categoryFilter ? item.category === categoryFilter : true;
-        return matchesSearch && matchesCategory;
-    });
-
-    const categories = Array.from(new Set(items.map(i => i.category).filter(Boolean))) as string[];
-
-    return (
-        <div className="flex flex-col gap-6">
-
-            {/* Category Filter / Hero Lite */}
-            <div className="flex flex-col gap-4">
-                <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-semibold text-gray-800">Categorías</h2>
-                    <button
-                        onClick={() => setCategoryFilter(null)}
-                        className="text-sm text-primary hover:underline"
-                    >
-                        Ver todas
-                    </button>
-                </div>
-
-                <div className="flex overflow-x-auto gap-3 pb-4 scrollbar-hide">
-                    <button
-                        className={`px-6 py-3 rounded-full whitespace-nowrap text-sm font-medium transition-all shadow-sm ${!categoryFilter ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'}`}
-                        onClick={() => setCategoryFilter(null)}
-                    >
-                        Todo
-                    </button>
-                    {categories.map(cat => (
-                        <button
-                            key={cat}
-                            className={`px-6 py-3 rounded-full whitespace-nowrap text-sm font-medium transition-all shadow-sm ${categoryFilter === cat ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'}`}
-                            onClick={() => setCategoryFilter(cat)}
-                        >
-                            {cat}
-                        </button>
-                    ))}
-                </div>
+            {/* Search Bar */}
+            <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <input
+                    type="text"
+                    placeholder="Buscar productos..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchParams({ ...Object.fromEntries(searchParams), q: e.target.value })}
+                    className="w-full pl-12 pr-4 py-3 bg-white border border-slate-300 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
+                />
             </div>
 
-            {/* Main Grid */}
-            <div className="mt-4">
-                <h1 className="text-2xl font-bold text-gray-900 mb-6">
-                    {searchTerm ? `Resultados para "${searchTerm}"` : 'Lo más reciente'}
+            {/* Filter Chips */}
+            <div className="flex flex-wrap gap-2">
+                <button
+                    onClick={() => setSearchParams({})}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                        !categoryFilter && !cityFilter && !searchTerm
+                            ? 'bg-indigo-600 text-white shadow-md'
+                            : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                    }`}
+                >
+                    Todos
+                </button>
+
+                {categories.map((cat) => (
+                    <button
+                        key={cat}
+                        onClick={() => setSearchParams({ category: cat })}
+                        className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                            categoryFilter === cat
+                                ? 'bg-indigo-600 text-white shadow-md'
+                                : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                        }`}
+                    >
+                        {cat}
+                    </button>
+                ))}
+            </div>
+
+            {/* Results Header */}
+            <div className="pt-4">
+                <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">
+                    {searchTerm
+                        ? `Resultados para "${searchTerm}"`
+                        : categoryFilter
+                            ? `${categoryFilter}`
+                            : 'Lo más reciente'}
                 </h1>
-
-                {loading ? (
-                    <div className="text-center py-20">
-                        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
-                        <p className="text-gray-500 mt-4">Cargando productos...</p>
-                    </div>
-                ) : filteredItems.length === 0 ? (
-                    <div className="text-center py-20 bg-white rounded-2xl shadow-sm border border-gray-100">
-                        <div className="max-w-md mx-auto">
-                            <h3 className="text-lg font-medium text-gray-900 mb-2">No encontramos nada</h3>
-                            <p className="text-gray-500">Intenta buscar con otras palabras o navega por las categorías.</p>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
-                        {filteredItems.map(item => (
-                            <Link key={item.id} to={`/item/${item.id}`} className="block group">
-                                <Card className="h-full hover:-translate-y-1 hover:shadow-lg transition-all duration-300 border-gray-100">
-                                    <div className="aspect-[4/3] w-full overflow-hidden bg-gray-100 relative">
-                                        <img
-                                            src={item.image_url}
-                                            alt={item.title}
-                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                        />
-                                        <div className="absolute bottom-2 left-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded text-xs font-semibold text-gray-900 shadow-sm">
-                                            {item.price_day}€ / día
-                                        </div>
-                                    </div>
-                                    <div className="p-4">
-                                        <h3 className="text-gray-900 font-medium line-clamp-2 leading-relaxed mb-1 group-hover:text-primary transition-colors">
-                                            {item.title}
-                                        </h3>
-                                        <div className="flex items-center text-xs text-gray-500 mt-2">
-                                            <MapPin className="w-3 h-3 mr-1" />
-                                            {item.city}
-                                        </div>
-                                    </div>
-                                </Card>
-                            </Link>
-                        ))}
-                    </div>
-                )}
+                <p className="text-slate-600">
+                    {filteredItems.length} producto{filteredItems.length !== 1 ? 's' : ''} disponible{filteredItems.length !== 1 ? 's' : ''}
+                </p>
             </div>
+
+            {/* Product Grid */}
+            <ProductGrid items={filteredItems} loading={loading} onItemClick={() => {}} />
         </div>
     );
 };
