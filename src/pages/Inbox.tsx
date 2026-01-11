@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Check, X } from 'lucide-react';
 import { db } from '../services/db';
 import { useAuth } from '../context/AuthContext';
-import { Badge } from '../components/common/Badge';
 import { Button } from '../components/common/Button';
 import type { Request, Item } from '../services/types';
 

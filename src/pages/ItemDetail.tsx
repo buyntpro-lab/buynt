@@ -3,16 +3,19 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Share2, MapPin, MessageSquare } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import { itemsService } from '../services/supabaseDb';
+import { chatService } from '../services/chatService';
 import { BookingWidget } from '../components/booking/BookingWidget';
 import { useAuth } from '../context/AuthContext';
 import { mockItems } from '../data/mockData';
 import type { Item } from '../services/types';
+import toast from 'react-hot-toast';
 
 export const ItemDetail: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, user } = useAuth();
     const [item, setItem] = useState<Item | undefined>(undefined);
+    const [isContacting, setIsContacting] = useState(false);
 
     useEffect(() => {
         const fetchItem = async () => {
@@ -34,6 +37,34 @@ export const ItemDetail: React.FC = () => {
     if (!item) {
         return <div className="p-8 text-center">Loading or Item not found...</div>;
     }
+
+    const handleContact = async () => {
+        if (!isAuthenticated || !user?.email) {
+            navigate('/login');
+            return;
+        }
+
+        // Can't contact yourself
+        if (item.owner_contact === user.email) {
+            toast.error('No puedes contactarte a ti mismo');
+            return;
+        }
+
+        setIsContacting(true);
+        try {
+            const conversationId = await chatService.getOrCreateConversation(item.id);
+            if (!conversationId) {
+                toast.error('No se pudo abrir el chat. Intenta de nuevo.');
+                return;
+            }
+            navigate(`/messages/${conversationId}`);
+        } catch (error) {
+            console.error('Error creating conversation:', error);
+            toast.error('No se pudo abrir el chat. Intenta de nuevo.');
+        } finally {
+            setIsContacting(false);
+        }
+    };
 
     return (
         <div className="max-w-5xl mx-auto md:py-8 animate-in fade-in duration-300">
@@ -84,13 +115,12 @@ export const ItemDetail: React.FC = () => {
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => isAuthenticated
-                                ? navigate(`/chat?productId=${item.id}&with=${item.owner_contact}`)
-                                : navigate('/login')
-                            }
+                            onClick={handleContact}
+                            disabled={isContacting}
                             className="gap-2 rounded-full border-gray-300 hover:border-primary hover:text-primary"
                         >
-                            <MessageSquare className="w-4 h-4" /> Contactar
+                            <MessageSquare className="w-4 h-4" /> 
+                            {isContacting ? 'Abriendo...' : 'Contactar'}
                         </Button>
                     </div>
 

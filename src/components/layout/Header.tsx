@@ -58,7 +58,7 @@ export const Header: React.FC = () => {
                 <div className="hidden md:flex items-center gap-2 md:gap-6">
                     {isAuthenticated ? (
                         <>
-                            <Link to="/inbox" className="p-2 text-gray-500 hover:bg-gray-100 rounded-full relative group flex flex-col items-center transition-all">
+                            <Link to="/messages" className="p-2 text-gray-500 hover:bg-gray-100 rounded-full relative group flex flex-col items-center transition-all">
                                 <MessageSquare className="w-6 h-6 group-hover:text-primary" />
                                 <span className="text-[10px] font-medium mt-0.5">Mensajes</span>
                                 {unreadCount > 0 && (

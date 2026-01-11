@@ -11,12 +11,10 @@ export const MyRequests: React.FC = () => {
     useEffect(() => {
         if (!isAuthenticated || !user) return;
 
-        // In a real app we'd query API. Here we filter all requests by requester_id or contact
-        // MVP fallback: if requester_id matches OR requester_contact matches
+        // In a real app we'd query API. Here we filter all requests by requester_contact
         const allRequests = db.requests.getAll();
         const myRequests = allRequests.filter(r =>
-            (user.id && r.requester_id === user.id) ||
-            (r.requester_contact === user.email)
+            r.requester_contact === user.email
         );
 
         const enriched = myRequests.map(r => {

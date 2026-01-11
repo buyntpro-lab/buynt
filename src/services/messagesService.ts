@@ -1,72 +1,237 @@
 import { supabase } from './supabase';
-import type { Message } from './types';
+import type { ChatMessage } from './types';
 
 export const messagesService = {
-    // Get conversation between two users for a specific product
-    async getConversation(productId: string, userId1: string, userId2: string): Promise<Message[]> {
-        const { data, error } = await supabase
-            .from('messages')
-            .select('*')
-            .eq('product_id', productId)
-            .or(`sender_id.eq.${userId1},receiver_id.eq.${userId1}`)
-            .or(`sender_id.eq.${userId2},receiver_id.eq.${userId2}`)
-            .order('created_at', { ascending: true });
+    // Create or get existing conversation (direct query, no RPC)
+    async getOrCreateConversation(productId: string, userEmail: string): Promise<string | null> {
+        try {
+            // 1. Get item owner
+            const { data: item, error: itemError } = await supabase
+                .from('items')
+                .select('owner_contact')
+                .eq('id', productId)
+                .single();
 
-        if (error) {
-            console.error('Error fetching messages:', error);
-            return [];
-        }
+            if (itemError || !item) {
+                console.error('Error getting item:', itemError);
+                return null;
+            }
 
-        // Filter locally to ensure we only get messages between these two users
-        // (Supabase OR logic can be tricky with multiple ORs)
-        return (data || []).filter(m =>
-            (m.sender_id === userId1 && m.receiver_id === userId2) ||
-            (m.sender_id === userId2 && m.receiver_id === userId1)
-        );
-    },
+            const ownerEmail = item.owner_contact;
+            
+            // Can't contact yourself
+            if (ownerEmail === userEmail) {
+                console.error('Cannot contact yourself');
+                return null;
+            }
 
-    async getUnreadCount(userId: string): Promise<number> {
-        const { count, error } = await supabase
-            .from('messages')
-            .select('*', { count: 'exact', head: true })
-            .eq('receiver_id', userId)
-            .eq('is_read', false);
+            // 2. Check if conversation already exists
+            const { data: existing } = await supabase
+                .from('conversations')
+                .select('id')
+                .eq('product_id', productId)
+                .eq('owner_id', ownerEmail)
+                .eq('renter_id', userEmail)
+                .maybeSingle();
 
-        return count || 0;
-    },
+            if (existing?.id) {
+                return existing.id;
+            }
 
-    async sendMessage(message: Omit<Message, 'id' | 'created_at' | 'is_read'>): Promise<Message | null> {
-        const { data, error } = await supabase
-            .from('messages')
-            .insert([message])
-            .select()
-            .single();
+            // 3. Create new conversation
+            const { data: newConv, error: createError } = await supabase
+                .from('conversations')
+                .insert({
+                    product_id: productId,
+                    owner_id: ownerEmail,
+                    renter_id: userEmail,
+                    owner_last_read_at: new Date().toISOString(),
+                    renter_last_read_at: new Date().toISOString()
+                })
+                .select('id')
+                .single();
 
-        if (error) {
-            console.error('Error sending message:', error);
+            if (createError) {
+                console.error('Error creating conversation:', createError);
+                return null;
+            }
+
+            return newConv?.id || null;
+        } catch (err) {
+            console.error('Exception in getOrCreateConversation:', err);
             return null;
         }
-        return data;
     },
 
-    async markAsRead(messageIds: string[]) {
-        if (messageIds.length === 0) return;
+    // Send a message (direct insert, no RPC)
+    async sendMessage(conversationId: string, body: string, senderEmail: string): Promise<string | null> {
+        try {
+            const { data, error } = await supabase
+                .from('messages')
+                .insert({
+                    conversation_id: conversationId,
+                    sender_id: senderEmail,
+                    body: body
+                })
+                .select('id')
+                .single();
 
-        await supabase
-            .from('messages')
-            .update({ is_read: true })
-            .in('id', messageIds);
+            if (error) {
+                console.error('Error sending message:', error);
+                return null;
+            }
+
+            // Update conversation updated_at
+            await supabase
+                .from('conversations')
+                .update({ updated_at: new Date().toISOString() })
+                .eq('id', conversationId);
+
+            return data?.id || null;
+        } catch (err) {
+            console.error('Exception in sendMessage:', err);
+            return null;
+        }
     },
 
-    // Subscribe to new messages for a user
-    subscribeToMessages(userId: string, callback: (payload: any) => void) {
+    // Get messages in a conversation
+    async getConversation(conversationId: string): Promise<ChatMessage[]> {
+        try {
+            const { data, error } = await supabase
+                .from('messages')
+                .select('*')
+                .eq('conversation_id', conversationId)
+                .order('created_at', { ascending: true });
+
+            if (error) {
+                console.error('Error fetching messages:', error);
+                return [];
+            }
+
+            return data || [];
+        } catch (err) {
+            console.error('Exception in getConversation:', err);
+            return [];
+        }
+    },
+
+    // Mark conversation as read (direct update)
+    async markConversationRead(conversationId: string, _userEmail: string, isOwner: boolean): Promise<void> {
+        try {
+            const updateField = isOwner ? 'owner_last_read_at' : 'renter_last_read_at';
+            await supabase
+                .from('conversations')
+                .update({ [updateField]: new Date().toISOString() })
+                .eq('id', conversationId);
+        } catch (err) {
+            console.error('Exception in markConversationRead:', err);
+        }
+    },
+
+    // Get conversation details
+    async getConversationDetails(conversationId: string) {
+        try {
+            const { data, error } = await supabase
+                .from('conversations')
+                .select('*, items(*)')
+                .eq('id', conversationId)
+                .single();
+
+            if (error) {
+                console.error('Error getting conversation details:', error);
+                return null;
+            }
+
+            return data;
+        } catch (err) {
+            console.error('Exception in getConversationDetails:', err);
+            return null;
+        }
+    },
+
+    // Get all conversations for a user
+    async listMyConversations(userEmail: string) {
+        try {
+            const { data, error } = await supabase
+                .from('conversations')
+                .select(`
+                    id,
+                    product_id,
+                    owner_id,
+                    renter_id,
+                    updated_at,
+                    owner_last_read_at,
+                    renter_last_read_at,
+                    items (
+                        title,
+                        image_url
+                    )
+                `)
+                .or(`owner_id.eq.${userEmail},renter_id.eq.${userEmail}`)
+                .order('updated_at', { ascending: false });
+
+            if (error) {
+                console.error('Error listing conversations:', error);
+                return [];
+            }
+
+            return data || [];
+        } catch (err) {
+            console.error('Exception in listMyConversations:', err);
+            return [];
+        }
+    },
+
+    // Subscribe to messages in a conversation
+    subscribeToConversation(conversationId: string, callback: (payload: any) => void) {
         return supabase
-            .channel('public:messages')
+            .channel(`conversation:${conversationId}`)
             .on(
                 'postgres_changes',
-                { event: 'INSERT', schema: 'public', table: 'messages', filter: `receiver_id=eq.${userId}` },
+                { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversationId}` },
                 callback
             )
             .subscribe();
+    },
+
+    // Get unread count for a user
+    async getUnreadCount(userEmail: string): Promise<number> {
+        try {
+            // Get all conversations where user is owner or renter
+            // Note: emails need to be quoted properly in PostgREST .or() syntax
+            const { data: conversations, error } = await supabase
+                .from('conversations')
+                .select('id, owner_id, renter_id, owner_last_read_at, renter_last_read_at')
+                .or(`owner_id.eq."${userEmail}",renter_id.eq."${userEmail}"`);
+
+            if (error || !conversations) {
+                console.error('Error getting conversations for unread count:', error);
+                return 0;
+            }
+
+            let totalUnread = 0;
+
+            // For each conversation, count messages newer than last read
+            for (const conv of conversations) {
+                const isOwner = conv.owner_id === userEmail;
+                const lastReadAt = isOwner ? conv.owner_last_read_at : conv.renter_last_read_at;
+
+                const { count, error: countError } = await supabase
+                    .from('messages')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('conversation_id', conv.id)
+                    .neq('sender_id', userEmail)
+                    .gt('created_at', lastReadAt || '1970-01-01');
+
+                if (!countError && count) {
+                    totalUnread += count;
+                }
+            }
+
+            return totalUnread;
+        } catch (err) {
+            console.error('Exception in getUnreadCount:', err);
+            return 0;
+        }
     }
 };

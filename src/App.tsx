@@ -10,6 +10,8 @@ import { MyItems } from './pages/MyItems';
 import { MyRequests } from './pages/MyRequests';
 import { Inbox } from './pages/Inbox';
 import { Chat } from './pages/Chat';
+import { Messages } from './pages/Messages';
+import { MessageDetail } from './pages/MessageDetail';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Profile } from './pages/Profile';
@@ -37,6 +39,8 @@ function App() {
             <Route path="my-requests" element={<ProtectedRoute><MyRequests /></ProtectedRoute>} />
             <Route path="inbox" element={<ProtectedRoute><Inbox /></ProtectedRoute>} />
             <Route path="chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
+            <Route path="messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+            <Route path="messages/:conversationId" element={<ProtectedRoute><MessageDetail /></ProtectedRoute>} />
             <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           </Route>
 
