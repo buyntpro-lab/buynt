@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Search, PlusCircle, MessageSquare, User } from 'lucide-react';
+import { Home, Search, PlusCircle, ClipboardList, User } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { rentalRequestsService } from '../../services/rentalRequestsService';
 
 interface TabBarItem {
     label: string;
@@ -12,7 +13,22 @@ interface TabBarItem {
 
 export const BottomTabBar: React.FC = () => {
     const location = useLocation();
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, user } = useAuth();
+    const [pendingCount, setPendingCount] = useState(0);
+
+    // Fetch pending requests count
+    useEffect(() => {
+        const fetchPendingCount = async () => {
+            if (isAuthenticated && user?.id) {
+                const count = await rentalRequestsService.getPendingCount();
+                setPendingCount(count);
+            }
+        };
+
+        fetchPendingCount();
+        const interval = setInterval(fetchPendingCount, 30000);
+        return () => clearInterval(interval);
+    }, [isAuthenticated, user?.id]);
 
     // Esconder tab bar en landing y login/register
     if (location.pathname === '/landing' || location.pathname === '/login' || location.pathname === '/register') {
@@ -21,9 +37,9 @@ export const BottomTabBar: React.FC = () => {
 
     const tabs: TabBarItem[] = [
         { label: 'Inicio', path: '/', icon: <Home className="w-6 h-6" /> },
-        { label: 'Buscar', path: '/?tab=search', icon: <Search className="w-6 h-6" /> },
+        { label: 'Buscar', path: '/explorar', icon: <Search className="w-6 h-6" /> },
         { label: 'Publicar', path: isAuthenticated ? '/publish' : '/login', icon: <PlusCircle className="w-6 h-6" /> },
-        { label: 'Mensajes', path: isAuthenticated ? '/inbox' : '/login', icon: <MessageSquare className="w-6 h-6" /> },
+        { label: 'Solicitudes', path: isAuthenticated ? '/solicitudes' : '/login', icon: <ClipboardList className="w-6 h-6" />, badge: pendingCount },
         { label: 'Perfil', path: isAuthenticated ? '/profile' : '/login', icon: <User className="w-6 h-6" /> },
     ];
 
@@ -50,7 +66,7 @@ export const BottomTabBar: React.FC = () => {
                         {tab.icon}
                         <span className="text-xs font-medium whitespace-nowrap">{tab.label}</span>
                         {tab.badge && tab.badge > 0 && (
-                            <span className="absolute top-2 right-2 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                            <span className="absolute top-2 right-2 w-5 h-5 bg-amber-500 text-white text-xs rounded-full flex items-center justify-center font-bold animate-pulse">
                                 {tab.badge}
                             </span>
                         )}

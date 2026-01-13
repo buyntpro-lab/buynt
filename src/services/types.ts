@@ -113,3 +113,66 @@ export interface ConversationListItem {
     unread_count: number;
     is_read: boolean;
 }
+
+// ============================================================================
+// RENTAL REQUESTS SYSTEM TYPES
+// ============================================================================
+
+export type RentalRequestStatus = 'pending' | 'accepted' | 'rejected' | 'cancelled' | 'expired';
+export type RentalStatus = 'active' | 'completed' | 'cancelled';
+
+export interface RentalRequest {
+    id: string;
+    item_id: string;
+    owner_id: string;
+    renter_id: string;
+    start_date: string;         // ISO date string (YYYY-MM-DD)
+    end_date: string;           // ISO date string (YYYY-MM-DD)
+    daily_price: number;
+    days_count: number;
+    deposit_amount: number;
+    service_fee: number;
+    total_amount: number;
+    currency: string;
+    note: string | null;
+    status: RentalRequestStatus;
+    created_at: string;
+    updated_at: string;
+    responded_at: string | null;
+    rental_id: string | null;
+}
+
+export interface RentalRequestWithDetails extends RentalRequest {
+    item_title: string;
+    item_image_url: string;
+    item_city: string;
+    item_category: string;
+    owner_name: string | null;
+    owner_email: string | null;
+    renter_name: string | null;
+    renter_email: string | null;
+}
+
+export interface Rental {
+    id: string;
+    request_id: string | null;
+    item_id: string;
+    owner_id: string;
+    renter_id: string;
+    start_date: string;
+    end_date: string;
+    daily_price: number;
+    days_count: number;
+    deposit_amount: number;
+    service_fee: number;
+    total_amount: number;
+    currency: string;
+    status: RentalStatus;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface BlockedDateRange {
+    start_date: string;
+    end_date: string;
+}

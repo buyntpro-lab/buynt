@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, PlusCircle, User, Menu, X, MessageSquare } from 'lucide-react';
+import { Search, PlusCircle, User, Menu, X, MessageSquare, ClipboardList } from 'lucide-react';
 import { Button } from '../common/Button';
 import { useAuth } from '../../context/AuthContext';
+import { rentalRequestsService } from '../../services/rentalRequestsService';
 
 export const Header: React.FC = () => {
     const { isAuthenticated, user } = useAuth();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const navigate = useNavigate();
     const [unreadCount, setUnreadCount] = useState(0);
+    const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
 
     useEffect(() => {
         const checkMessages = async () => {
@@ -19,9 +21,20 @@ export const Header: React.FC = () => {
             }
         };
 
+        const checkPendingRequests = async () => {
+            if (user?.id) {
+                const count = await rentalRequestsService.getPendingCount();
+                setPendingRequestsCount(count);
+            }
+        };
+
         if (isAuthenticated) {
             checkMessages();
-            const interval = setInterval(checkMessages, 60000);
+            checkPendingRequests();
+            const interval = setInterval(() => {
+                checkMessages();
+                checkPendingRequests();
+            }, 30000);
             return () => clearInterval(interval);
         }
     }, [user, isAuthenticated]);
@@ -62,6 +75,15 @@ export const Header: React.FC = () => {
                     
                     {isAuthenticated ? (
                         <>
+                            <Link to="/solicitudes" className="p-2 text-gray-500 hover:bg-gray-100 rounded-full relative group flex flex-col items-center transition-all">
+                                <ClipboardList className="w-6 h-6 group-hover:text-primary" />
+                                <span className="text-[10px] font-medium mt-0.5">Solicitudes</span>
+                                {pendingRequestsCount > 0 && (
+                                    <span className="absolute top-1 right-1.5 w-4 h-4 bg-amber-500 text-white text-[10px] flex items-center justify-center rounded-full border-2 border-white animate-pulse">
+                                        {pendingRequestsCount}
+                                    </span>
+                                )}
+                            </Link>
                             <Link to="/messages" className="p-2 text-gray-500 hover:bg-gray-100 rounded-full relative group flex flex-col items-center transition-all">
                                 <MessageSquare className="w-6 h-6 group-hover:text-primary" />
                                 <span className="text-[10px] font-medium mt-0.5">Mensajes</span>
@@ -132,6 +154,13 @@ export const Header: React.FC = () => {
 
                     {isAuthenticated ? (
                         <>
+                            <Link to="/solicitudes" className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg text-gray-700">
+                                <ClipboardList className="w-5 h-5" />
+                                <span>Solicitudes</span>
+                                {pendingRequestsCount > 0 && (
+                                    <span className="ml-auto bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full">{pendingRequestsCount}</span>
+                                )}
+                            </Link>
                             <Link to="/messages" className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg text-gray-700">
                                 <MessageSquare className="w-5 h-5" />
                                 <span>Mensajes</span>

@@ -9,6 +9,8 @@ import { Publish } from './pages/Publish';
 import { EditItem } from './pages/EditItem';
 import { MyItems } from './pages/MyItems';
 import { MyRequests } from './pages/MyRequests';
+import { Solicitudes } from './pages/Solicitudes';
+import { SolicitudDetail } from './pages/SolicitudDetail';
 import { Inbox } from './pages/Inbox';
 import { Chat } from './pages/Chat';
 import { Messages } from './pages/Messages';
@@ -49,6 +51,8 @@ function App() {
             <Route path="item/:id/editar" element={<ProtectedRoute><EditItem /></ProtectedRoute>} />
             <Route path="my-items" element={<ProtectedRoute><MyItems /></ProtectedRoute>} />
             <Route path="my-requests" element={<ProtectedRoute><MyRequests /></ProtectedRoute>} />
+            <Route path="solicitudes" element={<ProtectedRoute><Solicitudes /></ProtectedRoute>} />
+            <Route path="solicitudes/:id" element={<ProtectedRoute><SolicitudDetail /></ProtectedRoute>} />
             <Route path="inbox" element={<ProtectedRoute><Inbox /></ProtectedRoute>} />
             <Route path="chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
             <Route path="messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
