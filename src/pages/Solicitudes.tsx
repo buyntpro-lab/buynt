@@ -285,7 +285,7 @@ const RequestCard: React.FC<RequestCardProps> = ({
                     {/* Item Image */}
                     <div className="flex-shrink-0">
                         <img
-                            src={request.item_image_url || '/placeholder-item.jpg'}
+                            src={request.item_image_url || '/placeholder-item.svg'}
                             alt={request.item_title}
                             className="w-20 h-20 md:w-24 md:h-24 rounded-xl object-cover bg-slate-100"
                         />

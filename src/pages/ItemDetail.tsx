@@ -3,10 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Share2, MapPin, MessageSquare } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import { itemsService } from '../services/supabaseDb';
+import { itemImagesService } from '../services/itemImagesService';
 import { chatService } from '../services/chatService';
 import { BookingWidget } from '../components/booking/BookingWidget';
+import { ImageGallery } from '../components/gallery/ImageGallery';
 import { useAuth } from '../context/AuthContext';
-import type { Item } from '../services/types';
+import type { Item, ItemImage } from '../services/types';
 import toast from 'react-hot-toast';
 
 export const ItemDetail: React.FC = () => {
@@ -14,14 +16,19 @@ export const ItemDetail: React.FC = () => {
     const navigate = useNavigate();
     const { isAuthenticated, user } = useAuth();
     const [item, setItem] = useState<Item | undefined>(undefined);
+    const [itemImages, setItemImages] = useState<ItemImage[]>([]);
     const [isContacting, setIsContacting] = useState(false);
 
     useEffect(() => {
         const fetchItem = async () => {
             if (id) {
-                // Fetch from Supabase
-                const foundItem = await itemsService.getById(id);
+                // Fetch item and images in parallel
+                const [foundItem, images] = await Promise.all([
+                    itemsService.getById(id),
+                    itemImagesService.getByItemId(id),
+                ]);
                 setItem(foundItem || undefined);
+                setItemImages(images);
             }
         };
         fetchItem();
@@ -71,11 +78,25 @@ export const ItemDetail: React.FC = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
                 {/* Gallery / Image */}
-                <div className="h-[300px] md:h-[500px] bg-slate-100 rounded-none md:rounded-3xl overflow-hidden shadow-sm border border-slate-100 relative group">
-                    <img src={item.image_url} alt={item.title} className="w-full h-full object-cover" />
-                    <div className="absolute top-4 right-4 bg-white/90 backdrop-blur rounded-full p-2 shadow-sm cursor-pointer hover:bg-white transition-colors">
-                        <Share2 className="w-5 h-5 text-slate-700" />
-                    </div>
+                <div className="md:sticky md:top-24">
+                    {itemImages.length > 0 ? (
+                        <ImageGallery
+                            images={itemImages.map(img => ({
+                                id: img.id,
+                                fullUrl: itemImagesService.getUrl(img.path, 'full'),
+                                thumbUrl: itemImagesService.getUrl(img.path, 'thumb'),
+                                alt: item.title,
+                            }))}
+                            className="h-[300px] md:h-auto"
+                        />
+                    ) : (
+                        <div className="h-[300px] md:h-[500px] bg-slate-100 rounded-none md:rounded-3xl overflow-hidden shadow-sm border border-slate-100 relative group">
+                            <img src={item.image_url} alt={item.title} className="w-full h-full object-cover" />
+                            <div className="absolute top-4 right-4 bg-white/90 backdrop-blur rounded-full p-2 shadow-sm cursor-pointer hover:bg-white transition-colors">
+                                <Share2 className="w-5 h-5 text-slate-700" />
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Info & Booking Widget */}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { DollarSign, Upload } from 'lucide-react';
+import { DollarSign } from 'lucide-react';
 import { Input } from './Input';
 
 export interface ProductFormData {
@@ -19,6 +19,10 @@ interface ProductFormProps {
     submitLabel: string;
     loading: boolean;
     onCancel?: () => void;
+    /** Optional render prop for custom image upload section */
+    renderImageSection?: () => React.ReactNode;
+    /** Hide the legacy image URL input (use when renderImageSection is provided) */
+    hideImageUrl?: boolean;
 }
 
 const CATEGORIES = [
@@ -38,7 +42,9 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     onSubmit,
     submitLabel,
     loading,
-    onCancel
+    onCancel,
+    renderImageSection,
+    hideImageUrl = false
 }) => {
     const [formData, setFormData] = React.useState<ProductFormData>(initialValues);
 
@@ -130,39 +136,46 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             <div className="space-y-4">
                 <h2 className="text-lg font-semibold border-b pb-2">Imagen</h2>
 
-                <div>
-                    <label className="text-sm font-medium text-slate-700 block mb-2">URL de imagen</label>
-                    <div className="relative">
-                        <Upload className="absolute left-3 top-2.5 text-slate-400 w-4 h-4" />
-                        <input
-                            type="url"
-                            name="image_url"
-                            className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-md outline-none focus:ring-2 focus:ring-primary"
-                            placeholder="https://..."
-                            value={formData.image_url}
-                            onChange={handleChange}
-                        />
-                    </div>
-                    <p className="text-xs text-slate-500 mt-1">
-                        Pega la URL de una imagen. Si no proporcionas una, usaremos una imagen por defecto.
-                    </p>
-                </div>
+                {/* Custom image section (new system) */}
+                {renderImageSection && renderImageSection()}
 
-                {/* Image Preview */}
-                {formData.image_url && (
-                    <div className="mt-4">
-                        <p className="text-sm font-medium text-slate-700 mb-2">Vista previa:</p>
-                        <div className="w-full max-w-xs aspect-video rounded-lg overflow-hidden bg-slate-100 border border-slate-200">
-                            <img 
-                                src={formData.image_url} 
-                                alt="Vista previa"
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&q=80&w=800';
-                                }}
-                            />
+                {/* Legacy URL input (for backwards compatibility) */}
+                {!hideImageUrl && !renderImageSection && (
+                    <>
+                        <div>
+                            <label className="text-sm font-medium text-slate-700 block mb-2">URL de imagen (legacy)</label>
+                            <div className="relative">
+                                <input
+                                    type="url"
+                                    name="image_url"
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-md outline-none focus:ring-2 focus:ring-primary"
+                                    placeholder="https://..."
+                                    value={formData.image_url}
+                                    onChange={handleChange}
+                                />
+                            </div>
+                            <p className="text-xs text-slate-500 mt-1">
+                                Sistema legacy. Usa el nuevo sistema de subida de imágenes cuando esté disponible.
+                            </p>
                         </div>
-                    </div>
+
+                        {/* Image Preview */}
+                        {formData.image_url && (
+                            <div className="mt-4">
+                                <p className="text-sm font-medium text-slate-700 mb-2">Vista previa:</p>
+                                <div className="w-full max-w-xs aspect-video rounded-lg overflow-hidden bg-slate-100 border border-slate-200">
+                                    <img 
+                                        src={formData.image_url} 
+                                        alt="Vista previa"
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&q=80&w=800';
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
 

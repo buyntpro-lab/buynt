@@ -11,6 +11,71 @@ export interface Item {
     owner_contact: string;
     created_at: string;
     is_available?: boolean;
+    image_migrated_at?: string;  // Timestamp when image was migrated to Storage
+}
+
+// ============================================================================
+// ITEM IMAGES TYPES (Storage-based photos)
+// ============================================================================
+
+export interface ItemImage {
+    id: string;
+    item_id: string;
+    path: string;
+    bucket: string;
+    is_cover: boolean;
+    sort: number;
+    width?: number;
+    height?: number;
+    mime?: string;
+    bytes?: number;
+    source_url?: string;  // Original URL if migrated
+    created_by: string;
+    created_at: string;
+}
+
+// For creating new images
+export interface ItemImageInsert {
+    item_id: string;
+    path: string;
+    bucket?: string;
+    is_cover?: boolean;
+    sort?: number;
+    width?: number;
+    height?: number;
+    mime?: string;
+    bytes?: number;
+    source_url?: string;
+    created_by: string;
+}
+
+// ============================================================================
+// BOOKING MEDIA TYPES (Handoff/Return evidence)
+// ============================================================================
+
+export type BookingMediaType = 'handoff' | 'return';
+
+export interface BookingMedia {
+    id: string;
+    rental_id: string;
+    type: BookingMediaType;
+    path: string;
+    bucket: string;
+    bytes?: number;
+    note?: string;
+    uploaded_by: string;
+    created_at: string;
+}
+
+// For creating new booking media
+export interface BookingMediaInsert {
+    rental_id: string;
+    type: BookingMediaType;
+    path: string;
+    bucket?: string;
+    bytes?: number;
+    note?: string;
+    uploaded_by: string;
 }
 
 export interface Request {

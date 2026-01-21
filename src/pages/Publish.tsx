@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, DollarSign } from 'lucide-react';
+import { DollarSign, Loader2 } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
+import { ImageUploader, type ImageFile } from '../components/upload/ImageUploader';
 import { itemsService } from '../services/supabaseDb';
+import { itemImagesService } from '../services/itemImagesService';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -11,17 +13,23 @@ export const Publish: React.FC = () => {
     const navigate = useNavigate();
     const { user, isAuthenticated } = useAuth();
     const [loading, setLoading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState<string>('');
 
+    // Form state
     const [formData, setFormData] = useState({
         title: '',
         description: '',
         price_day: '',
         city: '',
-        image_url: '',
+        image_url: '', // Fallback for legacy mode
         category: '',
         owner_name: user?.full_name || '',
         owner_contact: user?.email || '',
     });
+
+    // Images state (new storage-based system)
+    const [images, setImages] = useState<ImageFile[]>([]);
+    const [useLegacyUrl, setUseLegacyUrl] = useState(false);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -33,9 +41,16 @@ export const Publish: React.FC = () => {
         setLoading(true);
 
         try {
-            // Validar campos requeridos
+            // Validate required fields
             if (!formData.title || !formData.price_day || !formData.city) {
                 toast.error('Por favor rellena los campos requeridos (Título, Precio, Ciudad)');
+                setLoading(false);
+                return;
+            }
+
+            // Validate images (at least 1 image or legacy URL)
+            if (images.length === 0 && !formData.image_url && !useLegacyUrl) {
+                toast.error('Por favor añade al menos una foto');
                 setLoading(false);
                 return;
             }
@@ -44,17 +59,24 @@ export const Publish: React.FC = () => {
                 title: formData.title,
                 price_day: formData.price_day,
                 city: formData.city,
+                images: images.length,
                 user_id: user?.id,
-                owner_email: user?.email
             });
 
-            // Crear el producto
+            // Determine image_url for item record
+            // If using new upload system, leave empty (will be populated from item_images)
+            // If using legacy URL, use that
+            const imageUrl = useLegacyUrl || images.length === 0
+                ? formData.image_url || 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&q=80&w=800'
+                : ''; // Will be updated after images are uploaded
+
+            // Create the item first
             const newItem = await itemsService.add({
                 title: formData.title,
                 description: formData.description,
                 price_day: Number(formData.price_day),
                 city: formData.city,
-                image_url: formData.image_url || 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&q=80&w=800',
+                image_url: imageUrl,
                 category: formData.category || 'Otros',
                 owner_name: isAuthenticated ? user!.full_name || 'Usuario' : formData.owner_name,
                 owner_contact: isAuthenticated ? user!.email : formData.owner_contact,
@@ -67,10 +89,61 @@ export const Publish: React.FC = () => {
                 return;
             }
 
-            console.log('✅ Producto publicado exitosamente:', newItem);
+            console.log('✅ Item creado:', newItem.id);
+
+            // Upload images if using new system
+            if (images.length > 0 && !useLegacyUrl) {
+                setUploadProgress('Subiendo imágenes...');
+                
+                // Mark images as uploading
+                setImages(prev => prev.map(img => ({ ...img, isUploading: true })));
+
+                // Upload images one by one with progress
+                const uploadedImages = [];
+                const errors = [];
+
+                for (let i = 0; i < images.length; i++) {
+                    const img = images[i];
+                    setUploadProgress(`Subiendo imagen ${i + 1} de ${images.length}...`);
+                    
+                    const result = await itemImagesService.upload(newItem.id, img.file, {
+                        isCover: img.isCover,
+                        sort: i,
+                    });
+
+                    if (result.success && result.image) {
+                        uploadedImages.push(result.image);
+                        // Update UI to show success
+                        setImages(prev => prev.map((prevImg, idx) => 
+                            idx === i ? { ...prevImg, isUploading: false } : prevImg
+                        ));
+                    } else {
+                        errors.push(`Imagen ${i + 1}: ${result.error}`);
+                        setImages(prev => prev.map((prevImg, idx) => 
+                            idx === i ? { ...prevImg, isUploading: false, error: result.error } : prevImg
+                        ));
+                    }
+                }
+
+                if (errors.length > 0) {
+                    console.warn('⚠️ Some images failed to upload:', errors);
+                    toast.error(`${errors.length} imagen(es) no se pudieron subir`);
+                }
+
+                // If we have at least one uploaded image, update item with cover URL
+                if (uploadedImages.length > 0) {
+                    const cover = uploadedImages.find(img => img.is_cover) || uploadedImages[0];
+                    const coverUrl = itemImagesService.getUrl(cover.path, 'full');
+                    
+                    await itemsService.update(newItem.id, { image_url: coverUrl });
+                    console.log('✅ Item cover URL updated');
+                }
+            }
+
+            console.log('✅ Producto publicado exitosamente');
             toast.success('¡Anuncio publicado correctamente!');
 
-            // Redirigir a Mis Artículos
+            // Redirect to My Items
             setTimeout(() => {
                 navigate('/my-items');
             }, 500);
@@ -80,6 +153,7 @@ export const Publish: React.FC = () => {
             toast.error(error.message || 'Error inesperado al publicar el anuncio');
         } finally {
             setLoading(false);
+            setUploadProgress('');
         }
     };
 
@@ -162,21 +236,45 @@ export const Publish: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Image */}
+                {/* Photos Section */}
                 <div className="space-y-4">
-                    <h2 className="text-lg font-semibold border-b pb-2">Fotos</h2>
-                    <Input
-                        label="URL de la imagen (MVP)"
-                        name="image_url"
-                        placeholder="https://..."
-                        value={formData.image_url}
-                        onChange={handleChange}
-                    />
-                    <div className="bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg p-8 text-center text-slate-500">
-                        <Upload className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-                        <p className="text-sm">Subida de archivos no disponible en MVP</p>
-                        <p className="text-xs text-slate-400">Usa una URL externa por ahora.</p>
+                    <div className="flex items-center justify-between border-b pb-2">
+                        <h2 className="text-lg font-semibold">Fotos</h2>
+                        <label className="flex items-center gap-2 text-sm text-slate-500 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={useLegacyUrl}
+                                onChange={(e) => setUseLegacyUrl(e.target.checked)}
+                                className="rounded border-slate-300"
+                            />
+                            Usar URL externa
+                        </label>
                     </div>
+
+                    {useLegacyUrl ? (
+                        // Legacy URL input
+                        <div className="space-y-2">
+                            <Input
+                                label="URL de la imagen"
+                                name="image_url"
+                                placeholder="https://..."
+                                value={formData.image_url}
+                                onChange={handleChange}
+                            />
+                            <p className="text-xs text-slate-500">
+                                Pega la URL de una imagen externa (Unsplash, Imgur, etc.)
+                            </p>
+                        </div>
+                    ) : (
+                        // New image uploader
+                        <ImageUploader
+                            images={images}
+                            onImagesChange={setImages}
+                            maxImages={8}
+                            maxFileSize={5}
+                            disabled={loading}
+                        />
+                    )}
                 </div>
 
                 {/* Owner Info (if guest) */}
@@ -200,6 +298,7 @@ export const Publish: React.FC = () => {
                     </div>
                 )}
 
+                {/* Submit */}
                 <div className="pt-4">
                     <Button 
                         type="submit" 
@@ -208,8 +307,8 @@ export const Publish: React.FC = () => {
                     >
                         {loading ? (
                             <div className="flex items-center justify-center gap-2">
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                Publicando...
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                                {uploadProgress || 'Publicando...'}
                             </div>
                         ) : (
                             'Publicar Anuncio'

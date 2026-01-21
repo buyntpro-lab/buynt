@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { ArrowLeft, ShieldX } from 'lucide-react';
 import { ProductForm } from '../components/common/ProductForm';
@@ -6,8 +6,10 @@ import type { ProductFormData } from '../components/common/ProductForm';
 import { itemsService } from '../services/supabaseDb';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/common/Button';
-import type { Item } from '../services/types';
+import type { Item, ItemImage } from '../services/types';
 import toast from 'react-hot-toast';
+import { ImageUploader, type ImageFile } from '../components/upload/ImageUploader';
+import { itemImagesService } from '../services/itemImagesService';
 
 export const EditItem: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -18,8 +20,14 @@ export const EditItem: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<'not-found' | 'unauthorized' | null>(null);
+    
+    // Image management state
+    const [existingImages, setExistingImages] = useState<ItemImage[]>([]);
+    const [newImages, setNewImages] = useState<ImageFile[]>([]);
+    const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
+    const [coverImageId, setCoverImageId] = useState<string | null>(null);
 
-    // Load item data
+    // Load item data and existing images
     useEffect(() => {
         const loadItem = async () => {
             if (!id) {
@@ -46,6 +54,18 @@ export const EditItem: React.FC = () => {
                 }
 
                 setItem(fetchedItem);
+                
+                // Load existing images
+                const images = await itemImagesService.getByItemId(id);
+                setExistingImages(images);
+                
+                // Set cover image
+                const cover = images.find((img: ItemImage) => img.is_cover);
+                if (cover) {
+                    setCoverImageId(cover.id);
+                } else if (images.length > 0) {
+                    setCoverImageId(images[0].id);
+                }
             } catch (err) {
                 console.error('Error loading item:', err);
                 setError('not-found');
@@ -63,16 +83,58 @@ export const EditItem: React.FC = () => {
     }, [id, user, isAuthenticated, navigate]);
 
     const handleSubmit = async (formData: ProductFormData) => {
-        if (!id || !item) return;
+        if (!id || !item || !user) return;
 
         setSaving(true);
         try {
+            // 1. Delete images marked for removal
+            for (const imageId of imagesToDelete) {
+                await itemImagesService.delete(imageId);
+            }
+            
+            // 2. Upload new images
+            let newUploadedImages: ItemImage[] = [];
+            if (newImages.length > 0) {
+                const filesToUpload = newImages.map(img => img.file);
+                const uploadResult = await itemImagesService.uploadMultiple(
+                    id,
+                    filesToUpload,
+                    existingImages.filter(img => !imagesToDelete.includes(img.id)).length
+                );
+                newUploadedImages = uploadResult.images;
+            }
+            
+            // 3. Update cover image if needed
+            const allImages = [
+                ...existingImages.filter(img => !imagesToDelete.includes(img.id)),
+                ...newUploadedImages
+            ];
+            
+            if (coverImageId && allImages.length > 0) {
+                // Check if cover is in remaining images
+                const coverExists = allImages.some(img => img.id === coverImageId);
+                if (coverExists) {
+                    await itemImagesService.setCover(coverImageId);
+                } else if (allImages.length > 0) {
+                    // Set first image as cover
+                    await itemImagesService.setCover(allImages[0].id);
+                }
+            }
+            
+            // 4. Update item basic data
+            // Get cover URL for backwards compatibility
+            let coverUrl = formData.image_url;
+            if (allImages.length > 0) {
+                const coverImg = allImages.find(img => img.id === coverImageId) || allImages[0];
+                coverUrl = itemImagesService.getUrl(coverImg.path, 'full');
+            }
+            
             const updates = {
                 title: formData.title,
                 description: formData.description,
                 price_day: Number(formData.price_day),
                 city: formData.city,
-                image_url: formData.image_url || 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&q=80&w=800',
+                image_url: coverUrl || 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&q=80&w=800',
                 category: formData.category || 'Otros',
                 owner_name: formData.owner_name,
                 owner_contact: formData.owner_contact,
@@ -98,6 +160,43 @@ export const EditItem: React.FC = () => {
             setSaving(false);
         }
     };
+
+    // Image handling callbacks
+    const handleImagesChange = useCallback((images: ImageFile[]) => {
+        setNewImages(images);
+    }, []);
+
+    const handleExistingImageRemove = useCallback((imageId: string) => {
+        setImagesToDelete(prev => [...prev, imageId]);
+        setExistingImages(prev => prev.filter(img => img.id !== imageId));
+        // If removing cover, set next available as cover
+        if (coverImageId === imageId) {
+            const remaining = existingImages.filter(img => img.id !== imageId);
+            setCoverImageId(remaining.length > 0 ? remaining[0].id : null);
+        }
+    }, [coverImageId, existingImages]);
+
+    const handleCoverChange = useCallback((imageId: string) => {
+        setCoverImageId(imageId);
+        // Clear cover from new images
+        setNewImages(prev => prev.map(img => ({ ...img, isCover: false })));
+    }, []);
+
+    // Render function for image section
+    const renderImageSection = useCallback(() => (
+        <ImageUploader
+            images={newImages}
+            onImagesChange={handleImagesChange}
+            existingImages={existingImages.map(img => ({
+                id: img.id,
+                url: itemImagesService.getUrl(img.path, 'thumb'),
+                isCover: img.id === coverImageId
+            }))}
+            onExistingImageRemove={handleExistingImageRemove}
+            onCoverChange={handleCoverChange}
+            maxImages={10}
+        />
+    ), [newImages, handleImagesChange, existingImages, coverImageId, handleExistingImageRemove, handleCoverChange]);
 
     const handleCancel = () => {
         navigate(-1);
@@ -202,6 +301,8 @@ export const EditItem: React.FC = () => {
                 submitLabel="Guardar cambios"
                 loading={saving}
                 onCancel={handleCancel}
+                renderImageSection={renderImageSection}
+                hideImageUrl={true}
             />
         </div>
     );

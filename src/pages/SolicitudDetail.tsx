@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { rentalRequestsService } from '../services/rentalRequestsService';
 import { Badge } from '../components/common/Badge';
 import { Button } from '../components/common/Button';
+import { BookingEvidence } from '../components/booking/BookingEvidence';
 import type { RentalRequestWithDetails, RentalRequestStatus } from '../services/types';
 import toast from 'react-hot-toast';
 import {
@@ -17,7 +18,8 @@ import {
     MessageSquare,
     RefreshCw,
     CreditCard,
-    Shield
+    Shield,
+    Camera
 } from 'lucide-react';
 import { format, parseISO, formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -206,7 +208,7 @@ export const SolicitudDetail: React.FC = () => {
                 <div className="p-4 md:p-6">
                     <div className="flex gap-4 items-start">
                         <img
-                            src={request.item_image_url || '/placeholder-item.jpg'}
+                            src={request.item_image_url || '/placeholder-item.svg'}
                             alt={request.item_title}
                             className="w-24 h-24 md:w-32 md:h-32 rounded-xl object-cover bg-slate-100 cursor-pointer hover:opacity-90 transition-opacity"
                             onClick={() => navigate(`/item/${request.item_id}`)}
@@ -443,7 +445,7 @@ export const SolicitudDetail: React.FC = () => {
 
             {/* Accepted - Show contact info or message link */}
             {request.status === 'accepted' && (
-                <div className="bg-green-50 border border-green-200 rounded-2xl p-4 md:p-6">
+                <div className="bg-green-50 border border-green-200 rounded-2xl p-4 md:p-6 mb-6">
                     <div className="flex items-start gap-3">
                         <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" />
                         <div>
@@ -464,6 +466,41 @@ export const SolicitudDetail: React.FC = () => {
                             </Button>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* Evidence Photos Section - Only shown for accepted requests with rental_id */}
+            {request.status === 'accepted' && request.rental_id && (
+                <div className="space-y-6 mb-6">
+                    <div className="flex items-center gap-2 text-slate-700">
+                        <Camera className="w-5 h-5" />
+                        <h2 className="text-lg font-semibold">Evidencias del Alquiler</h2>
+                    </div>
+                    <p className="text-sm text-slate-500 -mt-4">
+                        Documenta el estado del artículo durante la entrega y devolución para proteger a ambas partes.
+                    </p>
+
+                    {/* Handoff Evidence */}
+                    <BookingEvidence
+                        rentalId={request.rental_id}
+                        type="handoff"
+                        canUpload={isOwner || isRenter}
+                        title="📦 Fotos de Entrega"
+                        description="Estado del artículo al entregar al solicitante"
+                        minPhotos={3}
+                        maxPhotos={8}
+                    />
+
+                    {/* Return Evidence */}
+                    <BookingEvidence
+                        rentalId={request.rental_id}
+                        type="return"
+                        canUpload={isOwner || isRenter}
+                        title="📦 Fotos de Devolución"
+                        description="Estado del artículo al devolver al propietario"
+                        minPhotos={3}
+                        maxPhotos={8}
+                    />
                 </div>
             )}
         </div>

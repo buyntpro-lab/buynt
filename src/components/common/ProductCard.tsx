@@ -1,6 +1,9 @@
-import React from 'react';
-import { MapPin, Star, Heart } from 'lucide-react';
+import React, { useState } from 'react';
+import { MapPin, Star, Heart, ImageOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
+
+// Placeholder image for items without photos
+const PLACEHOLDER_IMAGE = '/placeholder-item.svg';
 
 interface ProductCardProps {
     id: string;
@@ -29,17 +32,31 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     isFavorite = false,
     onFavoriteClick,
 }) => {
+    const [imageError, setImageError] = useState(false);
+    
+    // Use fallback if image is empty or failed to load
+    const displayImage = (!image || imageError) ? PLACEHOLDER_IMAGE : image;
+    const showPlaceholder = !image || imageError;
+
     return (
         <Link to={`/item/${id}`} className="block group h-full">
             <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 h-full flex flex-col">
                 
                 {/* Image Container */}
                 <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
-                    <img
-                        src={image}
-                        alt={title}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
+                    {showPlaceholder && !image ? (
+                        <div className="w-full h-full flex items-center justify-center bg-slate-200">
+                            <ImageOff className="w-12 h-12 text-slate-400" />
+                        </div>
+                    ) : (
+                        <img
+                            src={displayImage}
+                            alt={title}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                            onError={() => setImageError(true)}
+                            loading="lazy"
+                        />
+                    )}
 
                     {/* Category Badge */}
                     {category && (
