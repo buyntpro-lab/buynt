@@ -24,6 +24,7 @@ interface BookingEvidenceProps {
     description?: string;
     minPhotos?: number;
     maxPhotos?: number;
+    onUploadComplete?: () => void;
 }
 
 interface MediaWithUrl extends BookingMedia {
@@ -42,6 +43,7 @@ export const BookingEvidence: React.FC<BookingEvidenceProps> = ({
     description,
     minPhotos = 3,
     maxPhotos = 8,
+    onUploadComplete,
 }) => {
     const [media, setMedia] = useState<MediaWithUrl[]>([]);
     const [loading, setLoading] = useState(true);
@@ -128,6 +130,8 @@ export const BookingEvidence: React.FC<BookingEvidenceProps> = ({
 
             if (uploadedMedia.length > 0) {
                 toast.success(`${uploadedMedia.length} foto(s) subida(s) correctamente`);
+                // Notify parent that upload completed (for timeline refresh)
+                onUploadComplete?.();
             }
 
             if (errors.length > 0) {

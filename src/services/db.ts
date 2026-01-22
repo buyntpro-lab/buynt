@@ -1,8 +1,7 @@
-import type { Item, Request } from './types';
+import type { Item } from './types';
 import { v4 as uuidv4 } from 'uuid';
 
 const ITEMS_KEY = 'buynt_items';
-const REQUESTS_KEY = 'buynt_requests';
 
 // Seed Data
 const SEED_ITEMS: Item[] = [
@@ -65,9 +64,6 @@ const initData = () => {
     if (!localStorage.getItem(ITEMS_KEY)) {
         localStorage.setItem(ITEMS_KEY, JSON.stringify(SEED_ITEMS));
     }
-    if (!localStorage.getItem(REQUESTS_KEY)) {
-        localStorage.setItem(REQUESTS_KEY, JSON.stringify([]));
-    }
 };
 
 initData();
@@ -108,39 +104,6 @@ export const db = {
             localStorage.setItem(ITEMS_KEY, JSON.stringify(items));
         }
     },
-    requests: {
-        getAll: (): Request[] => {
-            const requests = localStorage.getItem(REQUESTS_KEY);
-            return requests ? JSON.parse(requests) : [];
-        },
-        add: (request: Omit<Request, 'id' | 'created_at' | 'status'>): Request => {
-            const requests = db.requests.getAll();
-            const newRequest: Request = {
-                ...request,
-                id: uuidv4(),
-                status: 'pending',
-                created_at: new Date().toISOString(),
-            };
-            requests.unshift(newRequest);
-            localStorage.setItem(REQUESTS_KEY, JSON.stringify(requests));
-            return newRequest;
-        },
-        updateStatus: (id: string, status: Request['status']) => {
-            const requests = db.requests.getAll();
-            const index = requests.findIndex(r => r.id === id);
-            if (index !== -1) {
-                requests[index].status = status;
-                localStorage.setItem(REQUESTS_KEY, JSON.stringify(requests));
-            }
-        },
-        getByOwnerContact: (contact: string): Request[] => {
-            // This is a bit complex for NoSQL-ish localStorage, but feasible for MVP
-            // Need to join with items effectively
-            const requests = db.requests.getAll();
-            const items = db.items.getAll();
-            // Find items owned by this contact
-            const myItemsIds = items.filter(i => i.owner_contact === contact).map(i => i.id);
-            return requests.filter(r => myItemsIds.includes(r.item_id));
-        }
-    },
+    // NOTE: Legacy requests object removed in consolidation_A
+    // All request operations now use rentalRequestsService with Supabase RPCs
 };

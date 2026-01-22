@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { rentalRequestsService } from '../services/rentalRequestsService';
+import { useRentalProgress } from '../hooks/useRentalProgress';
 import { Badge } from '../components/common/Badge';
 import { Button } from '../components/common/Button';
-import { BookingEvidence } from '../components/booking/BookingEvidence';
+import { RentalProgressSummary } from '../components/rental/RentalProgressSummary';
+import { DisputePanel } from '../components/rental/DisputePanel';
 import type { RentalRequestWithDetails, RentalRequestStatus } from '../services/types';
 import toast from 'react-hot-toast';
 import {
@@ -19,7 +21,6 @@ import {
     RefreshCw,
     CreditCard,
     Shield,
-    Camera
 } from 'lucide-react';
 import { format, parseISO, formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -70,6 +71,14 @@ export const SolicitudDetail: React.FC = () => {
     const [request, setRequest] = useState<RentalRequestWithDetails | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
+    
+    // Use the rental progress hook for timeline data
+    const { 
+        progress, 
+        viewerRole, 
+        hasOpenDispute,
+        refresh: refreshProgress 
+    } = useRentalProgress(request?.rental_id || undefined);
 
     // Determine user role
     const isOwner = request?.owner_id === user?.id;
@@ -94,6 +103,11 @@ export const SolicitudDetail: React.FC = () => {
 
         fetchRequest();
     }, [id]);
+
+    // Callback for when actions complete (refresh progress)
+    const handleActionComplete = useCallback(() => {
+        refreshProgress();
+    }, [refreshProgress]);
 
     const handleCancel = async () => {
         if (!request || !confirm('¿Estás seguro de que quieres cancelar esta solicitud?')) return;
@@ -469,38 +483,24 @@ export const SolicitudDetail: React.FC = () => {
                 </div>
             )}
 
-            {/* Evidence Photos Section - Only shown for accepted requests with rental_id */}
-            {request.status === 'accepted' && request.rental_id && (
+            {/* Rental Progress Section - Only shown for accepted requests with rental_id */}
+            {request.status === 'accepted' && request.rental_id && progress && (
                 <div className="space-y-6 mb-6">
-                    <div className="flex items-center gap-2 text-slate-700">
-                        <Camera className="w-5 h-5" />
-                        <h2 className="text-lg font-semibold">Evidencias del Alquiler</h2>
-                    </div>
-                    <p className="text-sm text-slate-500 -mt-4">
-                        Documenta el estado del artículo durante la entrega y devolución para proteger a ambas partes.
-                    </p>
-
-                    {/* Handoff Evidence */}
-                    <BookingEvidence
+                    {/* Progress Summary Card with CTA to Wizard */}
+                    <RentalProgressSummary
                         rentalId={request.rental_id}
-                        type="handoff"
-                        canUpload={isOwner || isRenter}
-                        title="📦 Fotos de Entrega"
-                        description="Estado del artículo al entregar al solicitante"
-                        minPhotos={3}
-                        maxPhotos={8}
+                        progress={progress}
+                        viewerRole={viewerRole}
                     />
 
-                    {/* Return Evidence */}
-                    <BookingEvidence
-                        rentalId={request.rental_id}
-                        type="return"
-                        canUpload={isOwner || isRenter}
-                        title="📦 Fotos de Devolución"
-                        description="Estado del artículo al devolver al propietario"
-                        minPhotos={3}
-                        maxPhotos={8}
-                    />
+                    {/* Dispute Section (collapsed by default) */}
+                    {hasOpenDispute && user?.id && (
+                        <DisputePanel
+                            rentalId={request.rental_id}
+                            currentUserId={user.id}
+                            onDisputeUpdate={handleActionComplete}
+                        />
+                    )}
                 </div>
             )}
         </div>

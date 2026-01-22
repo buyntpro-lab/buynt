@@ -8,7 +8,7 @@ export interface Item {
     category?: string;
     owner_id?: string;
     owner_name: string;
-    owner_contact: string;
+    owner_contact?: string;  // Optional: only included for item owner, hidden in public views
     created_at: string;
     is_available?: boolean;
     image_migrated_at?: string;  // Timestamp when image was migrated to Storage
@@ -78,6 +78,17 @@ export interface BookingMediaInsert {
     uploaded_by: string;
 }
 
+// ============================================================================
+// LEGACY REQUEST TYPE - DEPRECATED (consolidation_A)
+// ============================================================================
+// DO NOT USE: This interface maps to the old `requests` table which is locked down.
+// Use RentalRequest and RentalRequestWithDetails types instead.
+// See rentalRequestsService.ts for the modern API.
+// ============================================================================
+/**
+ * @deprecated Use RentalRequest or RentalRequestWithDetails instead.
+ * This interface maps to the legacy `requests` table which is now locked with RLS deny-all.
+ */
 export interface Request {
     id: string;
     item_id: string;
@@ -237,7 +248,83 @@ export interface Rental {
     updated_at: string;
 }
 
+// Extended rental with item and user details
+export interface RentalWithDetails extends Rental {
+    item_title: string;
+    item_image_url: string;
+    item_city: string;
+    owner_name: string | null;
+    owner_email: string | null;
+    renter_name: string | null;
+    renter_email: string | null;
+    // Progress flags
+    handoff_uploaded: boolean;
+    handoff_confirmed: boolean;
+    return_uploaded: boolean;
+    return_confirmed: boolean;
+    has_open_dispute: boolean;
+}
+
 export interface BlockedDateRange {
     start_date: string;
     end_date: string;
+}
+
+// ============================================================================
+// RENTAL EVENTS (Timeline) TYPES
+// ============================================================================
+
+export type RentalEventType = 
+    | 'RENTAL_CREATED'
+    | 'HANDOFF_PHOTOS_UPLOADED'
+    | 'HANDOFF_CONFIRMED'
+    | 'RETURN_PHOTOS_UPLOADED'
+    | 'RETURN_CONFIRMED'
+    | 'RENTAL_COMPLETED'
+    | 'RENTAL_CANCELLED'
+    | 'DISPUTE_OPENED'
+    | 'DISPUTE_RESOLVED';
+
+export interface RentalEvent {
+    id: string;
+    rental_id: string;
+    event_type: RentalEventType;
+    actor_id: string | null;
+    actor_email?: string;
+    payload: Record<string, any>;
+    created_at: string;
+}
+
+// ============================================================================
+// DISPUTES TYPES
+// ============================================================================
+
+export type DisputeStatus = 'open' | 'resolved' | 'closed';
+
+export interface Dispute {
+    id: string;
+    rental_id: string;
+    opened_by: string;
+    opener_email?: string;
+    reason: string;
+    status: DisputeStatus;
+    created_at: string;
+    updated_at: string;
+    resolved_at: string | null;
+    resolved_by: string | null;
+    resolver_email?: string;
+    resolution_note: string | null;
+}
+
+export interface DisputeMessage {
+    id: string;
+    dispute_id: string;
+    sender_id: string;
+    sender_email?: string;
+    body: string;
+    created_at: string;
+}
+
+export interface DisputeWithMessages extends Dispute {
+    messages: DisputeMessage[];
 }

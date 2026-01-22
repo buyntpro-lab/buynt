@@ -30,32 +30,38 @@ ON CONFLICT (id) DO NOTHING;
 -- ============================================================================
 
 -- For items-public bucket
+DROP POLICY IF EXISTS "Public read items-public" ON storage.objects;
 CREATE POLICY "Public read items-public"
 ON storage.objects FOR SELECT
 TO public
 USING (bucket_id = 'items-public');
 
+DROP POLICY IF EXISTS "Authenticated upload items-public" ON storage.objects;
 CREATE POLICY "Authenticated upload items-public"
 ON storage.objects FOR INSERT
 TO authenticated
 WITH CHECK (bucket_id = 'items-public');
 
+DROP POLICY IF EXISTS "Authenticated delete items-public" ON storage.objects;
 CREATE POLICY "Authenticated delete items-public"
 ON storage.objects FOR DELETE
 TO authenticated
 USING (bucket_id = 'items-public');
 
 -- For booking-proof-private bucket
+DROP POLICY IF EXISTS "Authenticated read booking-proof-private" ON storage.objects;
 CREATE POLICY "Authenticated read booking-proof-private"
 ON storage.objects FOR SELECT
 TO authenticated
 USING (bucket_id = 'booking-proof-private');
 
+DROP POLICY IF EXISTS "Authenticated upload booking-proof-private" ON storage.objects;
 CREATE POLICY "Authenticated upload booking-proof-private"
 ON storage.objects FOR INSERT
 TO authenticated
 WITH CHECK (bucket_id = 'booking-proof-private');
 
+DROP POLICY IF EXISTS "Authenticated delete booking-proof-private" ON storage.objects;
 CREATE POLICY "Authenticated delete booking-proof-private"
 ON storage.objects FOR DELETE
 TO authenticated

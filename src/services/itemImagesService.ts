@@ -349,6 +349,15 @@ export const bookingMediaService = {
                 return { success: false, error: error.message };
             }
 
+            // Trigger timeline event RPC for this upload type
+            // This marks handoff/return as uploaded in the rental_events system
+            const rpcName = type === 'handoff' ? 'mark_handoff_uploaded' : 'mark_return_uploaded';
+            const { error: rpcError } = await supabase.rpc(rpcName, { p_rental_id: rentalId });
+            if (rpcError) {
+                // Log but don't fail - the media was uploaded successfully
+                console.warn(`Timeline event not created (${rpcName}):`, rpcError.message);
+            }
+
             return { success: true, media: data };
         } catch (err) {
             console.error('Upload booking media exception:', err);

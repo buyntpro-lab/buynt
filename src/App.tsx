@@ -8,10 +8,9 @@ import { ItemDetail } from './pages/ItemDetail';
 import { Publish } from './pages/Publish';
 import { EditItem } from './pages/EditItem';
 import { MyItems } from './pages/MyItems';
-import { MyRequests } from './pages/MyRequests';
 import { Solicitudes } from './pages/Solicitudes';
 import { SolicitudDetail } from './pages/SolicitudDetail';
-import { Inbox } from './pages/Inbox';
+import { RentalProgressWizard } from './pages/RentalProgressWizard';
 import { Chat } from './pages/Chat';
 import { Messages } from './pages/Messages';
 import { MessageDetail } from './pages/MessageDetail';
@@ -50,10 +49,13 @@ function App() {
             <Route path="publish" element={<ProtectedRoute><Publish /></ProtectedRoute>} />
             <Route path="item/:id/editar" element={<ProtectedRoute><EditItem /></ProtectedRoute>} />
             <Route path="my-items" element={<ProtectedRoute><MyItems /></ProtectedRoute>} />
-            <Route path="my-requests" element={<ProtectedRoute><MyRequests /></ProtectedRoute>} />
+            {/* Legacy my-requests redirects to modern solicitudes */}
+            <Route path="my-requests" element={<Navigate to="/solicitudes" replace />} />
             <Route path="solicitudes" element={<ProtectedRoute><Solicitudes /></ProtectedRoute>} />
             <Route path="solicitudes/:id" element={<ProtectedRoute><SolicitudDetail /></ProtectedRoute>} />
-            <Route path="inbox" element={<ProtectedRoute><Inbox /></ProtectedRoute>} />
+            <Route path="rentals/:id/progress" element={<ProtectedRoute><RentalProgressWizard /></ProtectedRoute>} />
+            {/* Legacy inbox redirects to modern solicitudes */}
+            <Route path="inbox" element={<Navigate to="/solicitudes" replace />} />
             <Route path="chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
             <Route path="messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
             <Route path="messages/:conversationId" element={<ProtectedRoute><MessageDetail /></ProtectedRoute>} />

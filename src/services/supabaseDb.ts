@@ -1,7 +1,9 @@
 import { supabase } from './supabase';
-import type { Item, Request } from './types';
+import type { Item } from './types';
 
 // Bookings operations
+// NOTE: Legacy bookings fallback to requests removed in consolidation_A
+// Use rentalRequestsService for all booking/request operations
 export const bookingsService = {
     async getByUserId(userId: string): Promise<any[]> {
         const { data, error } = await supabase
@@ -15,17 +17,8 @@ export const bookingsService = {
 
         if (error) {
             console.error('Error fetching bookings:', error);
-            // Fallback to requests if bookings table doesn't exist
-            const { data: reqData } = await supabase
-                .from('requests')
-                .select(`
-                    *,
-                    items (*)
-                `)
-                .eq('requester_contact', userId)
-                .order('created_at', { ascending: false });
-
-            return reqData || [];
+            // Legacy fallback removed - use rentalRequestsService instead
+            return [];
         }
         return data || [];
     }
@@ -34,14 +27,20 @@ export const bookingsService = {
 // Items operations
 export const itemsService = {
     async getAll(): Promise<Item[]> {
+        // Use items_public view to avoid exposing owner_contact (email)
         const { data, error } = await supabase
-            .from('items')
+            .from('items_public')
             .select('*')
             .order('created_at', { ascending: false });
 
         if (error) {
             console.error('Error fetching items from Supabase:', error);
-            return [];
+            // Fallback to items table if view doesn't exist yet
+            const { data: fallbackData } = await supabase
+                .from('items')
+                .select('id, title, description, price_day, city, category, image_url, owner_id, owner_name, created_at, is_available, image_migrated_at')
+                .order('created_at', { ascending: false });
+            return fallbackData || [];
         }
         
         console.log('🔍 itemsService.getAll() - Items from Supabase:', data?.length);
@@ -49,15 +48,22 @@ export const itemsService = {
     },
 
     async getById(id: string): Promise<Item | null> {
+        // For detail view, still need some info but not owner_contact for non-owners
         const { data, error } = await supabase
-            .from('items')
+            .from('items_public')
             .select('*')
             .eq('id', id)
             .single();
 
         if (error) {
             console.error('Error fetching item:', error);
-            return null;
+            // Fallback without owner_contact
+            const { data: fallbackData } = await supabase
+                .from('items')
+                .select('id, title, description, price_day, city, category, image_url, owner_id, owner_name, created_at, is_available, image_migrated_at')
+                .eq('id', id)
+                .single();
+            return fallbackData;
         }
         return data;
     },
@@ -153,58 +159,12 @@ export const itemsService = {
     }
 };
 
-// Requests operations
-export const requestsService = {
-    async getAll(): Promise<Request[]> {
-        const { data, error } = await supabase
-            .from('requests')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        if (error) {
-            console.error('Error fetching requests:', error);
-            return [];
-        }
-        return data || [];
-    },
-
-    async getByItemId(itemId: string): Promise<Request[]> {
-        const { data, error } = await supabase
-            .from('requests')
-            .select('*')
-            .eq('item_id', itemId);
-
-        if (error) {
-            console.error('Error fetching item requests:', error);
-            return [];
-        }
-        return data || [];
-    },
-
-    async add(request: Omit<Request, 'id' | 'created_at' | 'status'>): Promise<Request | null> {
-        const { data, error } = await supabase
-            .from('requests')
-            .insert([{ ...request, status: 'pending' }])
-            .select()
-            .single();
-
-        if (error) {
-            console.error('Error adding request:', error);
-            return null;
-        }
-        return data;
-    },
-
-    async updateStatus(id: string, status: 'accepted' | 'rejected'): Promise<boolean> {
-        const { error } = await supabase
-            .from('requests')
-            .update({ status })
-            .eq('id', id);
-
-        if (error) {
-            console.error('Error updating request status:', error);
-            return false;
-        }
-        return true;
-    }
-};
+// ============================================================================
+// LEGACY requestsService REMOVED (consolidation_A)
+// ============================================================================
+// All request operations now use rentalRequestsService with Supabase RPCs:
+// - rentalRequestsService.create() → create_rental_request RPC
+// - rentalRequestsService.respond() → respond_rental_request RPC
+// - rentalRequestsService.cancel() → cancel_rental_request RPC
+// - rentalRequestsService.listIncoming/listOutgoing() → rental_requests_with_items view
+// ============================================================================
