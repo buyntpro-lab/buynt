@@ -10,15 +10,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useRentalProgress } from '../hooks/useRentalProgress';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/common/Button';
-import { BookingEvidenceUploader } from '../components/booking/BookingEvidenceUploader';
+import { DualEvidenceUploader } from '../components/booking/DualEvidenceUploader';
 import { DisputePanel } from '../components/rental/DisputePanel';
 import { rentalEventsService } from '../services/rentalEventsService';
 import { 
     getStepAction, 
     isStepActionEnabled,
     type ProgressStep,
-    MIN_HANDOFF_PHOTOS,
-    MIN_RETURN_PHOTOS,
+    MIN_PHOTOS_PER_PARTY,
 } from '../lib/rentalProgress';
 import toast from 'react-hot-toast';
 import {
@@ -69,6 +68,8 @@ export const RentalProgressWizard: React.FC = () => {
         progressData,
         progress,
         events,
+        groupedMedia,
+        partyCounts,
         handoffPhotoCount,
         returnPhotoCount,
         hasOpenDispute,
@@ -189,9 +190,20 @@ export const RentalProgressWizard: React.FC = () => {
         
         // Photo upload steps have special UI
         const isPhotoStep = step.key === 'HANDOFF_PHOTOS' || step.key === 'RETURN_PHOTOS';
-        const photoType = step.key === 'HANDOFF_PHOTOS' ? 'handoff' : 'return';
-        const minPhotos = step.key === 'HANDOFF_PHOTOS' ? MIN_HANDOFF_PHOTOS : MIN_RETURN_PHOTOS;
-        const currentPhotoCount = step.key === 'HANDOFF_PHOTOS' ? handoffPhotoCount : returnPhotoCount;
+        const photoType: 'handoff' | 'return' = step.key === 'HANDOFF_PHOTOS' ? 'handoff' : 'return';
+        
+        // Get party photos for dual uploader
+        const yourPhotos = photoType === 'handoff' 
+            ? (groupedMedia?.[photoType]?.[viewerRole] || [])
+            : (groupedMedia?.[photoType]?.[viewerRole] || []);
+        const otherRole = viewerRole === 'owner' ? 'renter' : 'owner';
+        const otherPhotos = photoType === 'handoff'
+            ? (groupedMedia?.[photoType]?.[otherRole] || [])
+            : (groupedMedia?.[photoType]?.[otherRole] || []);
+        
+        // Labels for dual uploader
+        const yourLabel = viewerRole === 'owner' ? 'Arrendador' : 'Arrendatario';
+        const otherLabel = viewerRole === 'owner' ? 'Arrendatario' : 'Arrendador';
         
         return (
             <div 
@@ -254,31 +266,19 @@ export const RentalProgressWizard: React.FC = () => {
                 {/* Current Step Actions */}
                 {isCurrentStep && !step.isComplete && (
                     <div className="px-4 pb-4 border-t border-slate-100 mt-2 pt-4">
-                        {/* Photo Upload UI */}
-                        {isPhotoStep && rentalId && (
-                            <div className="mb-4">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm text-slate-600">
-                                        Fotos subidas: <strong>{currentPhotoCount}</strong> / {minPhotos} mínimo
-                                    </span>
-                                    {currentPhotoCount >= minPhotos && (
-                                        <span className="text-xs text-green-600 flex items-center gap-1">
-                                            <CheckCircle className="w-3 h-3" />
-                                            Mínimo alcanzado
-                                        </span>
-                                    )}
-                                </div>
-                                <BookingEvidenceUploader
-                                    rentalId={rentalId}
-                                    type={photoType}
-                                    canUpload={true}
-                                    title={step.title}
-                                    description={step.description}
-                                    minPhotos={minPhotos}
-                                    maxPhotos={8}
-                                    onUploadComplete={handlePhotoUploadComplete}
-                                />
-                            </div>
+                        {/* Photo Upload UI - Dual Evidence */}
+                        {isPhotoStep && rentalId && groupedMedia && (
+                            <DualEvidenceUploader
+                                rentalId={rentalId}
+                                type={photoType}
+                                viewerRole={viewerRole}
+                                yourPhotos={yourPhotos}
+                                otherPartyPhotos={otherPhotos}
+                                yourLabel={yourLabel}
+                                otherLabel={otherLabel}
+                                canUpload={true}
+                                onUploadComplete={handlePhotoUploadComplete}
+                            />
                         )}
                         
                         {/* Confirmation Button */}

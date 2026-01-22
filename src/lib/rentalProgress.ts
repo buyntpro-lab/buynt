@@ -11,6 +11,7 @@
 
 export const MIN_HANDOFF_PHOTOS = 3;
 export const MIN_RETURN_PHOTOS = 3;
+export const MIN_PHOTOS_PER_PARTY = 3;  // Each party (owner + renter) must upload this many
 export const TOTAL_STEPS = 6;
 
 // ============================================================================
@@ -26,6 +27,17 @@ export type ProgressStepKey =
     | 'RENTAL_COMPLETED';
 
 export type ViewerRole = 'owner' | 'renter' | 'none';
+export type UploaderRole = 'owner' | 'renter' | 'unknown';
+
+/**
+ * Party-separated photo counts for dual evidence system
+ */
+export interface PartyCounts {
+    ownerHandoff: number;
+    renterHandoff: number;
+    ownerReturn: number;
+    renterReturn: number;
+}
 
 export interface ProgressStep {
     key: ProgressStepKey;
@@ -38,6 +50,20 @@ export interface ProgressStep {
     actorRole: 'owner' | 'renter' | 'either' | 'system';
     actionLabel?: string;
     waitingLabel?: string;
+}
+
+export interface RentalProgressData {
+    // Rental info
+    rentalId: string;
+    rentalStatus: 'active' | 'completed' | 'cancelled';
+    rentalCreatedAt: string;
+    
+    // Media counts (legacy - total counts)
+    handoffPhotoCount: number;
+    returnPhotoCount: number;
+    
+    // NEW: Party-separated counts for dual evidence
+    partyCounts: PartyCounts;
 }
 
 export interface RentalProgressData {
@@ -161,17 +187,14 @@ function isStepComplete(key: ProgressStepKey, data: RentalProgressData): boolean
             // Always true if we have a rental
             return true;
             
-        case 'HANDOFF_PHOTOS':
-            // HYBRID: Check both event AND photo count
-            // Complete if event exists OR enough photos
-            return data.hasHandoffPhotosEvent || data.handoffPhotoCount >= MIN_HANDOFF_PHOTOS;
-            
         case 'HANDOFF_CONFIRMED':
             return data.hasHandoffConfirmedEvent;
             
         case 'RETURN_PHOTOS':
-            // HYBRID: Check both event AND photo count
-            return data.hasReturnPhotosEvent || data.returnPhotoCount >= MIN_RETURN_PHOTOS;
+            // DUAL EVIDENCE: Both owner AND renter must upload minimum photos
+            const ownerReturnOk = data.partyCounts.ownerReturn >= MIN_PHOTOS_PER_PARTY;
+            const renterReturnOk = data.partyCounts.renterReturn >= MIN_PHOTOS_PER_PARTY;
+            return (ownerReturnOk && renterReturnOk) || data.hasReturnPhotosEvent;
             
         case 'RETURN_CONFIRMED':
             return data.hasReturnConfirmedEvent;
@@ -254,6 +277,73 @@ export function computeRentalProgress(data: RentalProgressData): ComputedProgres
         progressPercent,
         isFullyComplete,
         isCancelled,
+    };
+}
+
+// ============================================================================
+// HELPER FUNCTIONS FOR DUAL EVIDENCE
+// ============================================================================
+
+/**
+ * Derive uploader role by comparing uploaded_by with rental owner/renter
+ */
+export function getUploaderRole(
+    uploadedBy: string,
+    ownerId: string,
+    renterId: string
+): UploaderRole {
+    if (uploadedBy === ownerId) return 'owner';
+    if (uploadedBy === renterId) return 'renter';
+    return 'unknown';
+}
+
+/**
+ * Group booking media by moment and party
+ */
+export interface GroupedMedia {
+    handoff: {
+        owner: Array<{ id: string; path: string; created_at: string; uploaded_by: string; note?: string }>;
+        renter: Array<{ id: string; path: string; created_at: string; uploaded_by: string; note?: string }>;
+        unknown: Array<{ id: string; path: string; created_at: string; uploaded_by: string; note?: string }>;
+    };
+    return: {
+        owner: Array<{ id: string; path: string; created_at: string; uploaded_by: string; note?: string }>;
+        renter: Array<{ id: string; path: string; created_at: string; uploaded_by: string; note?: string }>;
+        unknown: Array<{ id: string; path: string; created_at: string; uploaded_by: string; note?: string }>;
+    };
+}
+
+/**
+ * Group booking media list into moments and parties
+ */
+export function groupMediaByMomentAndParty(
+    mediaList: Array<{ id: string; type: string; path: string; created_at: string; uploaded_by: string; note?: string }>,
+    ownerId: string,
+    renterId: string
+): GroupedMedia {
+    const grouped: GroupedMedia = {
+        handoff: { owner: [], renter: [], unknown: [] },
+        return: { owner: [], renter: [], unknown: [] }
+    };
+    
+    for (const media of mediaList) {
+        const moment = media.type === 'handoff' ? 'handoff' : 'return';
+        const role = getUploaderRole(media.uploaded_by, ownerId, renterId);
+        grouped[moment][role].push(media);
+    }
+    
+    return grouped;
+}
+
+/**
+ * Compute party counts from grouped media
+ */
+export function computePartyCounts(grouped: GroupedMedia): PartyCounts {
+    return {
+        ownerHandoff: grouped.handoff.owner.length,
+        renterHandoff: grouped.handoff.renter.length,
+        ownerReturn: grouped.return.owner.length,
+        renterReturn: grouped.return.renter.length
     };
 }
 

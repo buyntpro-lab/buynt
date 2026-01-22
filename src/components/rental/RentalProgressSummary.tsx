@@ -2,25 +2,29 @@
  * RentalProgressSummary Component
  * 
  * Compact progress card for the rental detail page.
- * Shows progress bar, current step, and CTA to wizard.
+ * Shows progress bar, current step, dual party indicators, and CTA to wizard.
  */
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../common/Button';
-import type { ComputedProgress, ViewerRole } from '../../lib/rentalProgress';
+import type { ComputedProgress, ViewerRole, PartyCounts } from '../../lib/rentalProgress';
+import { MIN_PHOTOS_PER_PARTY } from '../../lib/rentalProgress';
 import { 
     Clock, 
     CheckCircle, 
     ChevronRight,
     AlertTriangle,
-    PartyPopper
+    PartyPopper,
+    Camera,
+    User
 } from 'lucide-react';
 
 interface RentalProgressSummaryProps {
     rentalId: string;
     progress: ComputedProgress;
     viewerRole: ViewerRole;
+    partyCounts?: PartyCounts;
     isLoading?: boolean;
 }
 
@@ -28,6 +32,7 @@ export const RentalProgressSummary: React.FC<RentalProgressSummaryProps> = ({
     rentalId,
     progress,
     viewerRole,
+    partyCounts,
     isLoading,
 }) => {
     const navigate = useNavigate();
@@ -139,6 +144,75 @@ export const RentalProgressSummary: React.FC<RentalProgressSummaryProps> = ({
                     />
                 </div>
             </div>
+            
+            {/* Dual Party Evidence Indicators */}
+            {partyCounts && !isFullyComplete && !isCancelled && (
+                <div className="mb-4 p-3 bg-slate-50 rounded-xl">
+                    <div className="flex items-center gap-2 mb-2">
+                        <Camera className="w-4 h-4 text-slate-600" />
+                        <span className="text-xs font-medium text-slate-700">Evidencias fotográficas</span>
+                    </div>
+                    <div className="space-y-1.5 ml-6">
+                        {/* Handoff Status */}
+                        <div className="flex items-center justify-between text-xs">
+                            <span className="text-slate-600">Entrega:</span>
+                            <div className="flex items-center gap-2">
+                                <span className={`flex items-center gap-1 ${
+                                    viewerRole === 'owner' 
+                                        ? partyCounts.ownerHandoff >= MIN_PHOTOS_PER_PARTY ? 'text-green-600' : 'text-amber-600'
+                                        : partyCounts.renterHandoff >= MIN_PHOTOS_PER_PARTY ? 'text-green-600' : 'text-amber-600'
+                                }`}>
+                                    <User className="w-3 h-3" />
+                                    tú {viewerRole === 'owner' ? partyCounts.ownerHandoff : partyCounts.renterHandoff}/{MIN_PHOTOS_PER_PARTY}
+                                    {(viewerRole === 'owner' ? partyCounts.ownerHandoff : partyCounts.renterHandoff) >= MIN_PHOTOS_PER_PARTY && (
+                                        <CheckCircle className="w-3 h-3" />
+                                    )}
+                                </span>
+                                <span className="text-slate-400">·</span>
+                                <span className={`flex items-center gap-1 ${
+                                    viewerRole === 'owner' 
+                                        ? partyCounts.renterHandoff >= MIN_PHOTOS_PER_PARTY ? 'text-green-600' : 'text-slate-400'
+                                        : partyCounts.ownerHandoff >= MIN_PHOTOS_PER_PARTY ? 'text-green-600' : 'text-slate-400'
+                                }`}>
+                                    otra parte {viewerRole === 'owner' ? partyCounts.renterHandoff : partyCounts.ownerHandoff}/{MIN_PHOTOS_PER_PARTY}
+                                    {(viewerRole === 'owner' ? partyCounts.renterHandoff : partyCounts.ownerHandoff) >= MIN_PHOTOS_PER_PARTY && (
+                                        <CheckCircle className="w-3 h-3" />
+                                    )}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        {/* Return Status */}
+                        <div className="flex items-center justify-between text-xs">
+                            <span className="text-slate-600">Devolución:</span>
+                            <div className="flex items-center gap-2">
+                                <span className={`flex items-center gap-1 ${
+                                    viewerRole === 'owner' 
+                                        ? partyCounts.ownerReturn >= MIN_PHOTOS_PER_PARTY ? 'text-green-600' : 'text-slate-400'
+                                        : partyCounts.renterReturn >= MIN_PHOTOS_PER_PARTY ? 'text-green-600' : 'text-slate-400'
+                                }`}>
+                                    <User className="w-3 h-3" />
+                                    tú {viewerRole === 'owner' ? partyCounts.ownerReturn : partyCounts.renterReturn}/{MIN_PHOTOS_PER_PARTY}
+                                    {(viewerRole === 'owner' ? partyCounts.ownerReturn : partyCounts.renterReturn) >= MIN_PHOTOS_PER_PARTY && (
+                                        <CheckCircle className="w-3 h-3" />
+                                    )}
+                                </span>
+                                <span className="text-slate-400">·</span>
+                                <span className={`flex items-center gap-1 ${
+                                    viewerRole === 'owner' 
+                                        ? partyCounts.renterReturn >= MIN_PHOTOS_PER_PARTY ? 'text-green-600' : 'text-slate-400'
+                                        : partyCounts.ownerReturn >= MIN_PHOTOS_PER_PARTY ? 'text-green-600' : 'text-slate-400'
+                                }`}>
+                                    otra parte {viewerRole === 'owner' ? partyCounts.renterReturn : partyCounts.ownerReturn}/{MIN_PHOTOS_PER_PARTY}
+                                    {(viewerRole === 'owner' ? partyCounts.renterReturn : partyCounts.ownerReturn) >= MIN_PHOTOS_PER_PARTY && (
+                                        <CheckCircle className="w-3 h-3" />
+                                    )}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
             
             {/* Current Step Info */}
             {!isFullyComplete && !isCancelled && currentStep && (

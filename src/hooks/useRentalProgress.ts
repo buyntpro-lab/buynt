@@ -11,9 +11,13 @@ import { useAuth } from '../context/AuthContext';
 import type { RentalEvent } from '../services/types';
 import {
     computeRentalProgress,
+    groupMediaByMomentAndParty,
+    computePartyCounts,
     type RentalProgressData,
     type ComputedProgress,
-    type ViewerRole
+    type ViewerRole,
+    type GroupedMedia,
+    type PartyCounts
 } from '../lib/rentalProgress';
 
 // ============================================================================
@@ -47,7 +51,15 @@ interface UseRentalProgressResult {
     // Events for timeline
     events: RentalEvent[];
     
-    // Media counts
+    // Media counts (legacy - total)
+    handoffPhotoCount: number;
+    returnPhotoCount: number;
+    
+    // NEW: Grouped media by moment and party
+    groupedMedia: GroupedMedia | null;
+    partyCounts: PartyCounts;
+    
+    // Dispute info
     handoffPhotoCount: number;
     returnPhotoCount: number;
     
@@ -66,13 +78,22 @@ interface UseRentalProgressResult {
 export function useRentalProgress(rentalId: string | undefined): UseRentalProgressResult {
     const { user } = useAuth();
     
-    const [isLoading, setIsLoading] = useState(true);
+    // CRITICAL: Start with isLoading=false to render grid INSTANTLY
+    // Data loads in background without blocking UI
+    const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     
     const [rental, setRental] = useState<RentalInfo | null>(null);
     const [events, setEvents] = useState<RentalEvent[]>([]);
     const [handoffPhotoCount, setHandoffPhotoCount] = useState(0);
     const [returnPhotoCount, setReturnPhotoCount] = useState(0);
+    const [groupedMedia, setGroupedMedia] = useState<GroupedMedia | null>(null);
+    const [partyCounts, setPartyCounts] = useState<PartyCounts>({
+        ownerHandoff: 0,
+        renterHandoff: 0,
+        ownerReturn: 0,
+        renterReturn: 0
+    });
     const [hasOpenDispute, setHasOpenDispute] = useState(false);
     const [disputeId, setDisputeId] = useState<string | null>(null);
     
@@ -166,17 +187,31 @@ export function useRentalProgress(rentalId: string | undefined): UseRentalProgre
             }
             setEvents(fetchedEvents);
             
-            // Fetch booking_media counts by type (single query with group by)
-            const { data: mediaCounts, error: mediaError } = await supabase
+            // Fetch booking_media with ALL fields needed for party separation
+            const { data: mediaList, error: mediaError } = await supabase
                 .from('booking_media')
-                .select('type')
-                .eq('rental_id', rentalId);
+                .select('id, type, path, bucket, uploaded_by, created_at, note')
+                .eq('rental_id', rentalId)
+                .order('created_at', { ascending: true });
             
-            if (!mediaError && mediaCounts) {
-                const handoff = mediaCounts.filter(m => m.type === 'handoff').length;
-                const returnCount = mediaCounts.filter(m => m.type === 'return').length;
+            if (!mediaError && mediaList && rentalData) {
+                // Compute legacy total counts
+                const handoff = mediaList.filter(m => m.type === 'handoff').length;
+                const returnCount = mediaList.filter(m => m.type === 'return').length;
                 setHandoffPhotoCount(handoff);
                 setReturnPhotoCount(returnCount);
+                
+                // NEW: Group by moment and party
+                const grouped = groupMediaByMomentAndParty(
+                    mediaList,
+                    rentalData.owner_id,
+                    rentalData.renter_id
+                );
+                setGroupedMedia(grouped);
+                
+                // Compute party counts
+                const counts = computePartyCounts(grouped);
+                setPartyCounts(counts);
             }
             
             // Check for open dispute
@@ -217,6 +252,7 @@ export function useRentalProgress(rentalId: string | undefined): UseRentalProgre
         
         handoffPhotoCount,
         returnPhotoCount,
+        partyCounts,  // NEW
         
         // Extract event flags from events array
         hasHandoffPhotosEvent: events.some(e => e.event_type === 'HANDOFF_PHOTOS_UPLOADED'),
@@ -249,6 +285,8 @@ export function useRentalProgress(rentalId: string | undefined): UseRentalProgre
         events,
         handoffPhotoCount,
         returnPhotoCount,
+        groupedMedia,  // NEW
+        partyCounts,   // NEW
         hasOpenDispute,
         disputeId,
         refresh: fetchData,

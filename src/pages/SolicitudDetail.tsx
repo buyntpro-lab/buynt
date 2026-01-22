@@ -76,6 +76,7 @@ export const SolicitudDetail: React.FC = () => {
     const { 
         progress, 
         viewerRole, 
+        partyCounts,
         hasOpenDispute,
         refresh: refreshProgress 
     } = useRentalProgress(request?.rental_id || undefined);
@@ -491,6 +492,7 @@ export const SolicitudDetail: React.FC = () => {
                         rentalId={request.rental_id}
                         progress={progress}
                         viewerRole={viewerRole}
+                        partyCounts={partyCounts}
                     />
 
                     {/* Dispute Section (collapsed by default) */}
