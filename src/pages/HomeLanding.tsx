@@ -203,15 +203,15 @@ export const HomeLanding: React.FC = () => {
             </header>
 
             {/* ==================== HERO SECTION ==================== */}
-            <section className="relative bg-gradient-to-b from-[#e8f5f0] via-[#f0faf7] to-white py-20 md:py-32">
+            <section className="relative bg-gradient-to-b from-[#e8f5f0] via-[#f0faf7] to-white py-16 md:py-24">
                 <div className="max-w-4xl mx-auto px-4 text-center">
-                    <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-6">
+                    <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-5">
                         <span className="text-slate-900">Alquila lo que necesitas.</span>
                         <br />
                         <span className="text-primary">Rentabiliza lo que no usas.</span>
                     </h1>
                     
-                    <p className="text-lg md:text-xl text-slate-600 mb-10 max-w-2xl mx-auto">
+                    <p className="text-lg md:text-xl text-slate-600 mb-8 max-w-2xl mx-auto">
                         El marketplace de alquiler entre particulares. Encuentra cámaras, herramientas, material deportivo y mucho más cerca de ti.
                     </p>
 
@@ -235,9 +235,9 @@ export const HomeLanding: React.FC = () => {
             </section>
 
             {/* ==================== ¿CÓMO FUNCIONA? ==================== */}
-            <section className="py-16 md:py-24 bg-white">
+            <section className="py-12 md:py-20 bg-white">
                 <div className="max-w-6xl mx-auto px-4">
-                    <h2 className="text-3xl md:text-4xl font-bold text-center text-slate-900 mb-16">
+                    <h2 className="text-3xl md:text-4xl font-bold text-center text-slate-900 mb-12">
                         ¿Cómo funciona?
                     </h2>
 
