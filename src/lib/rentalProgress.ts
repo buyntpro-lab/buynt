@@ -9,9 +9,10 @@
 // CONSTANTS
 // ============================================================================
 
-export const MIN_HANDOFF_PHOTOS = 3;
-export const MIN_RETURN_PHOTOS = 3;
-export const MIN_PHOTOS_PER_PARTY = 3;  // Each party (owner + renter) must upload this many
+export const MIN_HANDOFF_PHOTOS = 2;
+export const MIN_RETURN_PHOTOS = 2;
+export const MIN_PHOTOS_PER_PARTY = 2;  // Each party (owner + renter) must upload this many
+export const MAX_PHOTOS_PER_PARTY = 6;  // Max photos per party per moment (bloqueante)
 export const TOTAL_STEPS = 6;
 
 // ============================================================================
@@ -186,6 +187,12 @@ function isStepComplete(key: ProgressStepKey, data: RentalProgressData): boolean
         case 'RESERVATION_CREATED':
             // Always true if we have a rental
             return true;
+        
+        case 'HANDOFF_PHOTOS':
+            // DUAL EVIDENCE: Both owner AND renter must upload minimum photos
+            const ownerHandoffOk = data.partyCounts.ownerHandoff >= MIN_PHOTOS_PER_PARTY;
+            const renterHandoffOk = data.partyCounts.renterHandoff >= MIN_PHOTOS_PER_PARTY;
+            return (ownerHandoffOk && renterHandoffOk) || data.hasHandoffPhotosEvent;
             
         case 'HANDOFF_CONFIRMED':
             return data.hasHandoffConfirmedEvent;

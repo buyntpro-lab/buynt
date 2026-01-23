@@ -263,71 +263,70 @@ export const RentalProgressWizard: React.FC = () => {
                     </div>
                 </div>
                 
-                {/* Current Step Actions */}
-                {isCurrentStep && !step.isComplete && (
+                {/* Photo Step Content - Show when current OR completed */}
+                {isPhotoStep && rentalId && groupedMedia && (isCurrentStep || step.isComplete) && (
                     <div className="px-4 pb-4 border-t border-slate-100 mt-2 pt-4">
-                        {/* Photo Upload UI - Dual Evidence */}
-                        {isPhotoStep && rentalId && groupedMedia && (
-                            <DualEvidenceUploader
-                                rentalId={rentalId}
-                                type={photoType}
-                                viewerRole={viewerRole}
-                                yourPhotos={yourPhotos}
-                                otherPartyPhotos={otherPhotos}
-                                yourLabel={yourLabel}
-                                otherLabel={otherLabel}
-                                canUpload={true}
-                                onUploadComplete={handlePhotoUploadComplete}
-                            />
-                        )}
-                        
-                        {/* Confirmation Button */}
-                        {!isPhotoStep && (
-                            <div className="space-y-3">
-                                {/* Instructions */}
-                                <div className="p-3 bg-blue-50 rounded-lg">
-                                    <div className="flex items-start gap-2">
-                                        <Info className="w-4 h-4 text-blue-500 mt-0.5" />
-                                        <div className="text-sm text-blue-800">
-                                            {step.key === 'HANDOFF_CONFIRMED' && (
-                                                <>Verifica que las fotos de entrega documenten correctamente el estado del artículo antes de confirmar.</>
-                                            )}
-                                            {step.key === 'RETURN_CONFIRMED' && (
-                                                <>Verifica que las fotos de devolución muestren el estado del artículo al ser devuelto.</>
-                                            )}
-                                            {step.key === 'RENTAL_COMPLETED' && (
-                                                <>Una vez completado, el alquiler se marcará como finalizado y no se podrán realizar más acciones.</>
-                                            )}
-                                        </div>
+                        <DualEvidenceUploader
+                            rentalId={rentalId}
+                            type={photoType}
+                            viewerRole={viewerRole}
+                            yourPhotos={yourPhotos}
+                            otherPartyPhotos={otherPhotos}
+                            yourLabel={yourLabel}
+                            otherLabel={otherLabel}
+                            canUpload={true}
+                            onUploadComplete={handlePhotoUploadComplete}
+                        />
+                    </div>
+                )}
+                
+                {/* Current Step Actions (non-photo steps) */}
+                {isCurrentStep && !step.isComplete && !isPhotoStep && (
+                    <div className="px-4 pb-4 border-t border-slate-100 mt-2 pt-4">
+                        <div className="space-y-3">
+                            {/* Instructions */}
+                            <div className="p-3 bg-blue-50 rounded-lg">
+                                <div className="flex items-start gap-2">
+                                    <Info className="w-4 h-4 text-blue-500 mt-0.5" />
+                                    <div className="text-sm text-blue-800">
+                                        {step.key === 'HANDOFF_CONFIRMED' && (
+                                            <>Verifica que las fotos de entrega documenten correctamente el estado del artículo antes de confirmar.</>
+                                        )}
+                                        {step.key === 'RETURN_CONFIRMED' && (
+                                            <>Verifica que las fotos de devolución muestren el estado del artículo al ser devuelto.</>
+                                        )}
+                                        {step.key === 'RENTAL_COMPLETED' && (
+                                            <>Una vez completado, el alquiler se marcará como finalizado y no se podrán realizar más acciones.</>
+                                        )}
                                     </div>
                                 </div>
-                                
-                                {/* Action or Waiting */}
-                                {action.canPerform ? (
-                                    <Button
-                                        variant="primary"
-                                        onClick={() => handleAction(step.key)}
-                                        disabled={actionLoading !== null}
-                                        className="w-full"
-                                    >
-                                        {actionLoading === step.key ? (
-                                            <RefreshCw className="w-4 h-4 animate-spin mr-2" />
-                                        ) : (
-                                            icon
-                                        )}
-                                        <span className="ml-2">{action.label}</span>
-                                    </Button>
-                                ) : (
-                                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-center">
-                                        <Clock className="w-5 h-5 text-amber-500 mx-auto mb-1" />
-                                        <p className="text-sm text-amber-700">{action.label}</p>
-                                        <p className="text-xs text-amber-600 mt-1">
-                                            {viewerRole === 'renter' ? 'El propietario' : 'El arrendatario'} debe realizar esta acción
-                                        </p>
-                                    </div>
-                                )}
                             </div>
-                        )}
+                            
+                            {/* Action or Waiting */}
+                            {action.canPerform ? (
+                                <Button
+                                    variant="primary"
+                                    onClick={() => handleAction(step.key)}
+                                    disabled={actionLoading !== null}
+                                    className="w-full"
+                                >
+                                    {actionLoading === step.key ? (
+                                        <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+                                    ) : (
+                                        icon
+                                    )}
+                                    <span className="ml-2">{action.label}</span>
+                                </Button>
+                            ) : (
+                                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-center">
+                                    <Clock className="w-5 h-5 text-amber-500 mx-auto mb-1" />
+                                    <p className="text-sm text-amber-700">{action.label}</p>
+                                    <p className="text-xs text-amber-600 mt-1">
+                                        {viewerRole === 'renter' ? 'El propietario' : 'El arrendatario'} debe realizar esta acción
+                                    </p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
             </div>

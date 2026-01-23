@@ -71,8 +71,8 @@ export const BookingEvidenceUploader: React.FC<BookingEvidenceUploaderProps> = (
     canUpload,
     title,
     description,
-    minPhotos = 3,
-    maxPhotos = 8,
+    minPhotos = 2,
+    maxPhotos = 6,
     onUploadComplete,
 }) => {
     const [existingMedia, setExistingMedia] = useState<MediaWithUrl[]>([]);

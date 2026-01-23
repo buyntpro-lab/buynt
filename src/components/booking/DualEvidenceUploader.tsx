@@ -15,21 +15,18 @@ import {
     Loader2, 
     X, 
     Plus,
-    Trash2,
     CheckCircle,
     AlertCircle,
-    Eye
 } from 'lucide-react';
 import { bookingMediaService } from '../../services/itemImagesService';
 import { markHandoffUploaded, markReturnUploaded } from '../../services/rentalEventsService';
-import { getSignedUrl } from '../../services/storageService';
 import type { BookingMedia, ViewerRole } from '../../services/types';
 import { Button } from '../common/Button';
 import { MediaThumb as MediaThumbOptimized } from '../common/MediaThumbOptimized';
 import { PhotoViewerModal, type PhotoViewerPhoto } from '../common/PhotoViewerModal';
 import toast from 'react-hot-toast';
-import { createSignedUrlSafe, deleteFromStorageSafe } from '../../lib/storage';
-import { MIN_PHOTOS_PER_PARTY } from '../../lib/rentalProgress';
+import { deleteFromStorageSafe } from '../../lib/storage';
+import { MIN_PHOTOS_PER_PARTY, MAX_PHOTOS_PER_PARTY } from '../../lib/rentalProgress';
 import { supabase } from '../../lib/supabaseClient';
 
 // ============================================================================
@@ -81,7 +78,7 @@ export const DualEvidenceUploader: React.FC<DualEvidenceUploaderProps> = ({
 
     const sectionTitle = type === 'handoff' ? 'Fotos de Entrega' : 'Fotos de Devolución';
     const minPhotos = MIN_PHOTOS_PER_PARTY;
-    const maxPhotos = 8;
+    const maxPhotos = MAX_PHOTOS_PER_PARTY;
 
     // ✅ INSTANT: Usamos las props directamente (sin estado interno bloqueante)
     // El componente MediaThumbOptimized hace lazy-load de URLs firmadas
@@ -94,6 +91,10 @@ export const DualEvidenceUploader: React.FC<DualEvidenceUploaderProps> = ({
         signedUrl: '' // Se carga lazy en MediaThumbOptimized
     }));
 
+    // Límite bloqueante: cuántos espacios quedan
+    const remainingSlots = Math.max(0, maxPhotos - yourMedia.length - stagedFiles.length);
+    const isAtMaxLimit = yourMedia.length >= maxPhotos;
+
     // Log for debugging
     useEffect(() => {
         console.log('🔍 [DualEvidence] Grid ready:', {
@@ -104,20 +105,36 @@ export const DualEvidenceUploader: React.FC<DualEvidenceUploaderProps> = ({
         });
     }, [yourPhotos.length, otherPartyPhotos.length]);
 
-    // Handle file selection
+    // Handle file selection - with clamp to remaining slots
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
 
-        // Check total limit
-        const totalAfter = yourMedia.length + stagedFiles.length + files.length;
-        if (totalAfter > maxPhotos) {
-            toast.error(`Máximo ${maxPhotos} fotos por tipo`);
+        // Check if already at max
+        if (isAtMaxLimit) {
+            toast.error(`Has alcanzado el máximo de ${maxPhotos} fotos permitidas.`);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            return;
+        }
+
+        // Clamp selection to remaining slots
+        const filesToAdd = files.slice(0, remainingSlots);
+        const rejected = files.length - filesToAdd.length;
+
+        if (rejected > 0) {
+            toast(`Solo puedes añadir ${remainingSlots} foto(s) más. Se descartaron ${rejected}.`, {
+                icon: '⚠️',
+                duration: 4000,
+            });
+        }
+
+        if (filesToAdd.length === 0) {
+            if (fileInputRef.current) fileInputRef.current.value = '';
             return;
         }
 
         // Create staged files with preview
-        const newStaged: StagedFile[] = files.map(file => ({
+        const newStaged: StagedFile[] = filesToAdd.map(file => ({
             id: crypto.randomUUID(),
             file,
             preview: URL.createObjectURL(file)
@@ -218,40 +235,28 @@ export const DualEvidenceUploader: React.FC<DualEvidenceUploaderProps> = ({
         setViewerOpen(false);
     };
 
-    // Prepare ALL photos for viewer (your photos + other photos)
-    const allViewerPhotos: PhotoViewerPhoto[] = [
-        ...yourMedia.map(media => ({
-            id: media.id,
-            signedUrl: '', // Se cargará cuando se abra el viewer
-            created_at: media.created_at,
-            uploaderLabel: yourLabel,
-            note: media.note,
-            bucket: media.bucket,
-            path: media.path,
-        })),
-        ...otherMedia.map(media => ({
-            id: media.id,
-            signedUrl: '', // Se cargará cuando se abra el viewer
-            created_at: media.created_at,
-            uploaderLabel: otherLabel,
-            note: media.note,
-            bucket: media.bucket,
-            path: media.path,
-        })),
-    ];
-
-    // Compute status
+    // Compute status - SOLO fotos propias visibles
     const yourCount = yourMedia.length;
-    const otherCount = otherMedia.length;
+    const otherCount = otherMedia.length; // Solo para verificar si la otra parte cumplió
     const yourComplete = yourCount >= minPhotos;
     const otherComplete = otherCount >= minPhotos;
-    const bothComplete = yourComplete && otherComplete;
 
-    // Handler para abrir el visor en una foto específica
+    // Handler para abrir el visor en una foto específica (SOLO fotos propias)
     const handleOpenViewer = (index: number = 0) => {
         setViewerIndex(index);
         setViewerOpen(true);
     };
+
+    // Fotos para el visor - SOLO las propias
+    const viewerPhotos: PhotoViewerPhoto[] = yourMedia.map(media => ({
+        id: media.id,
+        signedUrl: '',
+        created_at: media.created_at,
+        uploaderLabel: yourLabel,
+        note: media.note,
+        bucket: media.bucket,
+        path: media.path,
+    }));
 
     return (
         <div className="space-y-6">
@@ -259,58 +264,48 @@ export const DualEvidenceUploader: React.FC<DualEvidenceUploaderProps> = ({
             <div>
                 <h3 className="text-lg font-semibold text-slate-900">{sectionTitle}</h3>
                 <p className="text-sm text-slate-600 mt-1">
-                    Ambas partes deben documentar el estado del artículo con mínimo {minPhotos} fotos cada uno
+                    Sube mínimo {minPhotos} fotos del estado del artículo (máximo {maxPhotos})
                 </p>
             </div>
 
-            {/* Progress summary */}
-            <div className="grid grid-cols-2 gap-4">
-                <div className={`p-4 rounded-lg border-2 ${yourComplete ? 'border-green-500 bg-green-50' : 'border-slate-300 bg-slate-50'}`}>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <div className="text-sm font-medium text-slate-700">{yourLabel} (Tú)</div>
-                            <div className="text-2xl font-bold text-slate-900 mt-1">
-                                {yourCount}/{maxPhotos}
-                            </div>
+            {/* Tu progreso personal */}
+            <div className={`p-4 rounded-lg border-2 ${yourComplete ? 'border-green-500 bg-green-50' : 'border-indigo-300 bg-indigo-50'}`}>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <div className="text-sm font-medium text-slate-700">Tu progreso</div>
+                        <div className="text-2xl font-bold text-slate-900 mt-1">
+                            {yourCount}/{minPhotos} mínimo
                         </div>
-                        {yourComplete ? (
-                            <CheckCircle className="w-8 h-8 text-green-600" />
-                        ) : (
-                            <AlertCircle className="w-8 h-8 text-amber-500" />
-                        )}
-                    </div>
-                </div>
-
-                <div className={`p-4 rounded-lg border-2 ${otherComplete ? 'border-green-500 bg-green-50' : 'border-slate-300 bg-slate-50'}`}>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <div className="text-sm font-medium text-slate-700">{otherLabel}</div>
-                            <div className="text-2xl font-bold text-slate-900 mt-1">
-                                {otherCount}/{maxPhotos}
-                            </div>
+                        <div className="text-xs text-slate-500 mt-1">
+                            {yourCount}/{maxPhotos} máximo permitido
                         </div>
-                        {otherComplete ? (
-                            <CheckCircle className="w-8 h-8 text-green-600" />
-                        ) : (
-                            <AlertCircle className="w-8 h-8 text-slate-400" />
-                        )}
                     </div>
+                    {yourComplete ? (
+                        <CheckCircle className="w-8 h-8 text-green-600" />
+                    ) : (
+                        <AlertCircle className="w-8 h-8 text-amber-500" />
+                    )}
                 </div>
             </div>
 
-            {/* Overall status */}
-            {bothComplete ? (
+            {/* Status banner */}
+            {yourComplete ? (
                 <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                     <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
                     <div className="text-sm text-green-800">
-                        <strong>Evidencias completas:</strong> Ambas partes han cumplido el mínimo requerido
+                        <strong>¡Listo!</strong> Has subido el mínimo requerido de fotos.
+                        {otherComplete ? (
+                            <span className="ml-1">La otra parte también ha completado.</span>
+                        ) : (
+                            <span className="ml-1 text-amber-700">Esperando a que la otra parte suba las suyas.</span>
+                        )}
                     </div>
                 </div>
             ) : (
                 <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                     <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
                     <div className="text-sm text-amber-800">
-                        <strong>Pendiente:</strong> El paso se completará cuando ambas partes lleguen a {minPhotos}/{minPhotos}
+                        <strong>Pendiente:</strong> Sube al menos {minPhotos - yourCount} foto{minPhotos - yourCount !== 1 ? 's' : ''} más para completar tu parte.
                     </div>
                 </div>
             )}
@@ -319,20 +314,30 @@ export const DualEvidenceUploader: React.FC<DualEvidenceUploaderProps> = ({
             <div className="border-2 border-indigo-200 rounded-xl p-6 bg-indigo-50/30">
                 <div className="flex items-center justify-between mb-4">
                     <h4 className="font-semibold text-slate-900">
-                        Tus fotos ({yourCount})
+                        Tus fotos ({yourCount}/{maxPhotos})
                     </h4>
-                    {canUpload && (
+                    {canUpload && !isAtMaxLimit && (
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={() => fileInputRef.current?.click()}
-                            disabled={uploading || yourCount >= maxPhotos}
+                            disabled={uploading}
                         >
                             <Plus className="w-4 h-4 mr-1" />
                             Seleccionar fotos
                         </Button>
                     )}
                 </div>
+
+                {/* Mensaje permanente de límite máximo */}
+                {isAtMaxLimit && canUpload && (
+                    <div className="flex items-center gap-2 p-3 mb-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                        <div className="text-sm text-blue-800">
+                            Has alcanzado el máximo de {maxPhotos} fotos permitidas para este paso.
+                        </div>
+                    </div>
+                )}
 
                 {/* Photos Grid - LAZY LOAD (fast render, progressive image loading) */}
                 {yourMedia.length > 0 && (
@@ -416,49 +421,10 @@ export const DualEvidenceUploader: React.FC<DualEvidenceUploaderProps> = ({
                 />
             </div>
 
-            {/* OTHER PARTY PHOTOS SECTION */}
-            <div className="border-2 border-slate-200 rounded-xl p-6 bg-slate-50/50">
-                <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-semibold text-slate-900">
-                        Fotos de {otherLabel} ({otherCount})
-                    </h4>
-                    {otherMedia.length > 0 && (
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleOpenViewer}
-                        >
-                            <Eye className="w-4 h-4 mr-1" />
-                            Revisar fotos
-                        </Button>
-                    )}
-                </div>
-
-                {/* Other party photos grid (lazy load, readonly) */}
-                {otherMedia.length > 0 ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                        {otherMedia.map((media, index) => (
-                            <MediaThumbOptimized
-                                key={media.id}
-                                media={media}
-                                onClick={() => handleOpenViewer(yourMedia.length + index)}
-                                isDeletable={false}
-                                size="grid"
-                            />
-                        ))}
-                    </div>
-                ) : (
-                    <div className="text-center py-8 text-slate-500">
-                        <Camera className="w-12 h-12 mx-auto mb-3 text-slate-400" />
-                        <p className="text-sm">{otherLabel} aún no ha subido fotos</p>
-                    </div>
-                )}
-            </div>
-
-            {/* Photo viewer modal */}
-            {viewerOpen && allViewerPhotos.length > 0 && (
+            {/* Photo viewer modal - SOLO tus fotos */}
+            {viewerOpen && viewerPhotos.length > 0 && (
                 <PhotoViewerModal
-                    photos={allViewerPhotos}
+                    photos={viewerPhotos}
                     initialIndex={viewerIndex}
                     onClose={handleCloseViewer}
                 />
