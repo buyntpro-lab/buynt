@@ -235,7 +235,7 @@ export const HomeLanding: React.FC = () => {
             </section>
 
             {/* ==================== ¿CÓMO FUNCIONA? ==================== */}
-            <section className="py-12 md:py-20 bg-white">
+            <section className="py-11 md:py-18 bg-white">
                 <div className="max-w-6xl mx-auto px-4">
                     <h2 className="text-3xl md:text-4xl font-bold text-center text-slate-900 mb-12">
                         ¿Cómo funciona?
